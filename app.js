@@ -620,9 +620,117 @@ function printReceipt(){
 }
 
 /* =========================================================
+   AUTO-UPDATE (Service Worker)
+   Tujuan: begitu ada versi baru ter-deploy di GitHub Pages, app
+   mendeteksinya sendiri, download di background, lalu reload
+   otomatis — tanpa user perlu clear cache/data Chrome manual.
+   ========================================================= */
+const APP_DISPLAY_VERSION = 'v3';
+let swRegistration = null;
+let updateReloadTriggered = false;
+
+function setUpdateBtnState(mode){
+  const btn = document.getElementById('update-check-btn');
+  if(!btn) return;
+  btn.classList.remove('spinning','has-update');
+  if(mode === 'checking') btn.classList.add('spinning');
+  if(mode === 'available') btn.classList.add('has-update');
+}
+
+function showUpdateToast(text){
+  const el = document.getElementById('update-toast');
+  const txt = document.getElementById('update-toast-text');
+  if(!el) return;
+  txt.textContent = text;
+  el.classList.add('show');
+}
+function hideUpdateToast(){
+  const el = document.getElementById('update-toast');
+  if(el) el.classList.remove('show');
+}
+
+function initServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+
+  const versionLabel = document.getElementById('app-version-label');
+  if(versionLabel) versionLabel.textContent = 'Versi aplikasi ' + APP_DISPLAY_VERSION;
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      swRegistration = reg;
+
+      // Kalau ada worker baru yang sudah "waiting" (selesai di-download
+      // tapi belum aktif), langsung aktifkan.
+      if(reg.waiting){
+        activateNewServiceWorker(reg.waiting);
+      }
+
+      // Saat SW baru ketemu & sedang di-install (state berubah)
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if(!newWorker) return;
+        setUpdateBtnState('checking');
+        newWorker.addEventListener('statechange', () => {
+          if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+            // Versi baru siap dipakai -> langsung aktifkan & reload
+            setUpdateBtnState('available');
+            activateNewServiceWorker(newWorker);
+          }
+        });
+      });
+    }).catch(()=>{});
+
+    // Begitu controller berganti (SW baru sudah ambil alih), reload
+    // sekali supaya semua file (html/js) yang tampil adalah versi baru.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(updateReloadTriggered) return;
+      updateReloadTriggered = true;
+      showUpdateToast('Pembaruan siap, memuat ulang…');
+      setTimeout(() => window.location.reload(), 500);
+    });
+  });
+
+  // Cek update tiap kali app dibuka lagi / tab kembali aktif / balik dari background
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') checkForUpdate();
+  });
+  window.addEventListener('focus', checkForUpdate);
+  window.addEventListener('pageshow', checkForUpdate);
+
+  // Cek sekali saat pertama kali load
+  checkForUpdate();
+}
+
+function activateNewServiceWorker(worker){
+  showUpdateToast('Memperbarui aplikasi…');
+  worker.postMessage('SKIP_WAITING');
+}
+
+function checkForUpdate(){
+  if(!swRegistration) return;
+  setUpdateBtnState('checking');
+  swRegistration.update().catch(()=>{}).finally(() => {
+    // Kasih jeda kecil biar animasi spin terlihat natural, lalu balik normal
+    // kalau memang tidak ada versi baru (updatefound tidak akan terpanggil).
+    setTimeout(() => {
+      if(!document.getElementById('update-check-btn').classList.contains('has-update')){
+        setUpdateBtnState('idle');
+      }
+    }, 900);
+  });
+}
+
+function manualCheckUpdate(){
+  if(!('serviceWorker' in navigator)){ showToast('Perangkat tidak mendukung auto-update'); return; }
+  showToast('Mengecek pembaruan…');
+  checkForUpdate();
+}
+
+/* =========================================================
    INIT
    ========================================================= */
 (function init(){
+  initServiceWorker();
   const session = localStorage.getItem(LS_SESSION);
   if(session){
     const data = getUserData(session);

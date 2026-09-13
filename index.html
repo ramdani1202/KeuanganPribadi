@@ -218,6 +218,22 @@
   .settings-row .srl{ font-size:14.5px; font-weight:600; }
   .settings-row .srv{ font-size:13px; color:var(--ink-soft); font-family:var(--mono); }
 
+  .update-btn{
+    width:36px; height:36px; border-radius:50%; border:none; background:var(--white);
+    display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
+    color:var(--ink-soft);
+  }
+  .update-btn.spinning svg{ animation:spin 0.9s linear infinite; }
+  .update-btn.has-update{ color:var(--accent); }
+  @keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+
+  .update-toast{
+    position:fixed; top:calc(14px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) translateY(-140%);
+    background:var(--ink); color:var(--paper); padding:11px 18px; border-radius:14px; font-size:13px; font-weight:700;
+    display:flex; align-items:center; gap:8px; transition:transform 0.3s ease; z-index:200; max-width:88%;
+  }
+  .update-toast.show{ transform:translateX(-50%) translateY(0); }
+
   ::selection{ background:var(--accent); }
 </style>
 </head>
@@ -226,6 +242,14 @@
 
   <!-- ===================== AUTH: LOGIN ===================== -->
   <section class="screen active" id="screen-login">
+    <div class="top" style="justify-content:flex-end; padding-bottom:0;">
+      <button class="update-btn" id="update-check-btn" onclick="manualCheckUpdate()" title="Cek pembaruan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" id="update-icon">
+          <path d="M3 12a9 9 0 0115.4-6.4M21 12a9 9 0 01-15.4 6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M17 3v5h-5M7 21v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
     <div class="content center-content">
       <div style="text-align:center; margin-bottom:8px;">
         <svg width="52" height="52" viewBox="0 0 24 24" fill="none" style="margin-bottom:14px;">
@@ -236,6 +260,7 @@
         </svg>
         <h2 class="title" style="margin-bottom:0;">Catatan Uang</h2>
         <p class="sub">Masuk ke akunmu untuk lanjut mencatat</p>
+        <p class="sub" id="app-version-label" style="margin-top:-18px; font-size:11.5px; opacity:0.6;"></p>
       </div>
       <div class="field">
         <label>Nama akun</label>
@@ -570,17 +595,14 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="update-toast" id="update-toast">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 0115.4-6.4M21 12a9 9 0 01-15.4 6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 3v5h-5M7 21v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="update-toast-text">Memperbarui aplikasi…</span>
+</div>
 <div class="print-area" id="print-area"></div>
 
 <!-- jsPDF for receipt printing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
-</script>
 </body>
 </html>

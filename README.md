@@ -41,6 +41,28 @@ catatan-uang/
     └── icon-maskable.svg
 ```
 
+## Auto-update (penting saat kamu ubah/upload ulang file)
+
+App ini sudah auto-update — user tidak perlu clear cache Chrome manual tiap kali kamu deploy versi baru.
+
+**Cara kerjanya:**
+- Tiap kali app dibuka, dibuka lagi dari background, atau tab jadi aktif kembali, app otomatis cek apakah ada `sw.js` versi baru di server
+- Kalau ada, versi baru otomatis di-download di background lalu langsung diaktifkan
+- Setelah aktif, halaman reload sendiri (muncul notifikasi kecil "Memperbarui aplikasi…")
+- Ada juga tombol lingkaran ↻ di pojok kanan atas halaman login untuk cek manual kapan saja
+
+**Yang WAJIB kamu lakukan tiap kali update/upload ulang file ke GitHub:**
+
+Buka `sw.js`, cari baris ini di paling atas:
+```js
+const APP_VERSION = 'v3';
+```
+Naikkan jadi `'v4'`, `'v5'`, dst — **setiap kali** kamu mengubah file apa pun (index.html, app.js, dll) dan upload ulang.
+
+Kenapa harus manual naikkan versi? Karena begitulah cara browser tahu "file ini berbeda dari sebelumnya, saatnya update" — kalau isi `sw.js` persis sama seperti sebelumnya, browser menganggap tidak ada perubahan dan user lama akan tetap memakai versi cache lama.
+
+(Opsional, biar rapi: baris `APP_DISPLAY_VERSION` di `app.js` juga bisa disamakan, hanya untuk ditampilkan sebagai label versi di halaman login — tidak wajib untuk auto-update itu sendiri.)
+
 ## Catatan penting
 
 - **Data disimpan di browser (localStorage)**, bukan di server/cloud. Artinya:
