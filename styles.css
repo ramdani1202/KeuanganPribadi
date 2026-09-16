@@ -87,6 +87,19 @@ p.sub{ color:var(--ink-soft); font-size:14px; margin:0 0 28px; line-height:1.5; 
 .add-inline input{ flex:1; }
 .add-inline button{ width:52px; border-radius:14px; border:none; background:var(--ink); color:var(--paper); font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 
+.add-trigger{
+  width:100%; margin-top:14px; padding:14px 16px; border-radius:14px;
+  border:1.5px dashed var(--line); background:transparent;
+  color:var(--ink-soft); font-family:var(--sans); font-size:14.5px; font-weight:600;
+  display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;
+  transition:background 0.15s, border-color 0.15s, color 0.15s;
+}
+.add-trigger:active{ background:var(--paper-dim); border-color:var(--ink-soft); color:var(--ink); }
+.add-trigger-plus{
+  width:20px; height:20px; border-radius:50%; background:var(--ink); color:var(--paper);
+  font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; font-weight:700;
+}
+
 .progress-dots{ display:flex; gap:6px; padding:16px 20px 0; }
 .progress-dots span{ height:4px; flex:1; border-radius:2px; background:var(--line); }
 .progress-dots span.done{ background:var(--ink); }
