@@ -5,7 +5,7 @@ function TabBar({ active, onNavigate }) {
     { key: 'history', label: 'Riwayat', Icon: IconHistory },
     { key: 'wallets', label: 'Dompet', Icon: IconWallet },
     { key: 'settings', label: 'Pengaturan', Icon: IconSettings }
-  ];
+  ]; 
   return (
     <div className="tabbar">
       {tabs.map(({ key, label, Icon }) => (
