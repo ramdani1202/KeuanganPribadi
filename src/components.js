@@ -97,3 +97,50 @@ function TxModal({ type, onClose }) {
     </div>
   );
 }
+
+// ============ ADD WALLET MODAL (Bank / E-wallet) ============
+function AddWalletModal({ kind, onClose }) {
+  const { addBank, addEwallet, showToast } = useApp();
+  const [name, setName] = React.useState('');
+
+  if (!kind) return null;
+
+  const isBank = kind === 'bank';
+  const title = isBank ? 'Tambah bank' : 'Tambah e-wallet';
+  const sub = isBank ? 'Masukkan nama bank baru' : 'Masukkan nama e-wallet baru';
+  const placeholder = isBank ? 'cth. BCA, Mandiri, SeaBank' : 'cth. GoPay, OVO, Dana';
+
+  const handleSubmit = () => {
+    if (!name.trim()) { showToast(isBank ? 'Isi nama bank' : 'Isi nama e-wallet'); return; }
+    if (isBank) addBank(name.trim()); else addEwallet(name.trim());
+    showToast(isBank ? 'Bank ditambahkan' : 'E-wallet ditambahkan');
+    setName('');
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay active" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet">
+        <div className="modal-handle" />
+        <h3 className="modal-title">{title}</h3>
+        <p className="modal-sub">{sub}</p>
+
+        <div className="field">
+          <label>{isBank ? 'Nama bank' : 'Nama e-wallet'}</label>
+          <input
+            type="text"
+            autoFocus
+            placeholder={placeholder}
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+          />
+        </div>
+
+        <button className="btn btn-primary" onClick={handleSubmit}>
+          {isBank ? 'Simpan bank' : 'Simpan e-wallet'}
+        </button>
+      </div>
+    </div>
+  );
+}

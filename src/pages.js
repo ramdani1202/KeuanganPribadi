@@ -415,24 +415,10 @@ function HistoryPage({ onNavigate }) {
 
 // ============ WALLETS ============
 function WalletsPage({ onNavigate }) {
-  const { data, addBank, addEwallet, showToast } = useApp();
-  const [bankInput, setBankInput] = React.useState('');
-  const [ewalletInput, setEwalletInput] = React.useState('');
+  const { data } = useApp();
+  const [addModalKind, setAddModalKind] = React.useState(null); // 'bank' | 'ewallet' | null
 
   if (!data) return null;
-
-  const handleAddBank = () => {
-    if (!bankInput.trim()) return;
-    addBank(bankInput);
-    setBankInput('');
-    showToast('Bank ditambahkan');
-  };
-  const handleAddEwallet = () => {
-    if (!ewalletInput.trim()) return;
-    addEwallet(ewalletInput);
-    setEwalletInput('');
-    showToast('E-wallet ditambahkan');
-  };
 
   return (
     <section className="screen active">
@@ -450,12 +436,9 @@ function WalletsPage({ onNavigate }) {
             </div>
           ))}
         </div>
-        <div className="add-inline" style={{ marginBottom: 22 }}>
-          <input type="text" placeholder="Tambah nama bank" value={bankInput}
-            onChange={e => setBankInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAddBank()} />
-          <button onClick={handleAddBank}>+</button>
-        </div>
+        <button className="add-trigger" style={{ marginBottom: 22 }} onClick={() => setAddModalKind('bank')}>
+          <span className="add-trigger-plus">+</span> Tambah bank
+        </button>
 
         <p className="sub" style={{ marginBottom: 10 }}>E-wallet</p>
         <div className="stack" style={{ marginBottom: 22 }}>
@@ -469,12 +452,9 @@ function WalletsPage({ onNavigate }) {
             </div>
           ))}
         </div>
-        <div className="add-inline" style={{ marginBottom: 22 }}>
-          <input type="text" placeholder="Tambah nama e-wallet" value={ewalletInput}
-            onChange={e => setEwalletInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAddEwallet()} />
-          <button onClick={handleAddEwallet}>+</button>
-        </div>
+        <button className="add-trigger" style={{ marginBottom: 22 }} onClick={() => setAddModalKind('ewallet')}>
+          <span className="add-trigger-plus">+</span> Tambah e-wallet
+        </button>
 
         <p className="sub" style={{ marginBottom: 10 }}>Uang tunai</p>
         <div className="row-item">
@@ -483,6 +463,7 @@ function WalletsPage({ onNavigate }) {
         </div>
       </div>
       <TabBar active="wallets" onNavigate={onNavigate} />
+      <AddWalletModal kind={addModalKind} onClose={() => setAddModalKind(null)} />
     </section>
   );
 }
