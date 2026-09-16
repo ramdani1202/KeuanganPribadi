@@ -2,7 +2,7 @@
 // setiap kali ada push ke branch main. Kamu TIDAK perlu mengubah baris ini manual.
 // Perubahan string ini membuat browser mendeteksi sw.js sebagai "berbeda" dan
 // otomatis menjalankan siklus update, sehingga user tidak perlu clear cache manual.
-const APP_VERSION = '20260916052145-64289b9';
+const APP_VERSION = '20260916053048-d41c4ee';
 const CACHE_NAME = `catatan-uang-react-${APP_VERSION}`;
 
 const ASSETS = [
