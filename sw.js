@@ -14,7 +14,7 @@
 //    Pages, dan user yang online akan langsung lihat versi terbaru
 //    saat itu juga -- TANPA perlu naikkan versi apa pun di file ini.
 
-const CACHE_NAME = 'catatan-uang-offline-cache';
+const CACHE_NAME = 'keuanganpribadi-offline-cache';
 
 const ASSETS = [
   './',

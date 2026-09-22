@@ -337,9 +337,9 @@ function refreshHome(){
    TRANSACTION MODAL
    ========================================================= */
 function sourceIconSVG(type){
-  if(type === 'bank') return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><path d="M3 10l9-6 9 6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="4" y="10" width="16" height="9" stroke="currentColor" stroke-width="1.8"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
-  if(type === 'ewallet') return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 12.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/></svg>`;
-  return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg>`;
+  if(type === 'bank') return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 4l9 6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="4.5" y="10.5" width="15" height="8.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 20.5h19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  if(type === 'ewallet') return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="14" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="15" r="1.3" fill="currentColor"/></svg>`;
+  return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="6.5" width="19" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg>`;
 }
 
 function openTxModal(type){
@@ -603,7 +603,7 @@ function printReceipt(){
   let y = 10;
   doc.setFont('courier', 'bold');
   doc.setFontSize(12);
-  doc.text('CATATAN UANG', 40, y, { align:'center' }); y += 5;
+  doc.text('KEUANGANPRIBADI', 40, y, { align:'center' }); y += 5;
   doc.setFontSize(8);
   doc.setFont('courier','normal');
   doc.text(`Akun: ${currentUser}`, 40, y, { align:'center' }); y += 4;

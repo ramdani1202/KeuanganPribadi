@@ -1,13 +1,13 @@
 {
-  "name": "Catatan Uang",
-  "short_name": "Catatan Uang",
+  "name": "KeuanganPribadi",
+  "short_name": "KeuanganPribadi",
   "description": "Pembukuan pribadi sederhana — catat pemasukan, pengeluaran, bank, e-wallet, dan cash.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F5EFE3",
-  "theme_color": "#2B2620",
+  "background_color": "#F1F7F6",
+  "theme_color": "#0D9488",
   "icons": [
     {
       "src": "icons/icon-192.svg",

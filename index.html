@@ -3,27 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#2B2620">
-<meta name="description" content="Catatan Uang — pembukuan pribadi sederhana">
-<title>Catatan Uang</title>
+<meta name="theme-color" content="#0D9488">
+<meta name="description" content="KeuanganPribadi — pembukuan pribadi sederhana">
+<title>KeuanganPribadi</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-192.svg">
 <style>
   :root{
-    --paper:#F5EFE3;
-    --paper-dim:#EBE3D2;
-    --ink:#2B2620;
-    --ink-soft:#5C5346;
-    --line:#D8CDB6;
-    --in:#3D5C3A;
-    --in-soft:#E4EBDF;
-    --out:#A6432E;
-    --out-soft:#F3E1DA;
-    --accent:#D9A441;
-    --white:#FFFDF8;
-    --shadow: 0 2px 0 rgba(43,38,32,0.08);
-    --radius: 18px;
+    --paper:#F1F7F6;
+    --paper-dim:#E4EFED;
+    --ink:#0B2B29;
+    --ink-soft:#5C7A76;
+    --line:#DCE9E6;
+    --in:#0D9488;
+    --in-deep:#0A6E64;
+    --in-soft:#D9F0EC;
+    --out:#C24A3E;
+    --out-soft:#FBE4E0;
+    --accent:#14B8A6;
+    --accent-deep:#0F766E;
+    --white:#FFFFFF;
+    --shadow: 0 4px 16px rgba(13,148,136,0.08);
+    --radius: 20px;
     --mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
     --sans: 'Inter', -apple-system, system-ui, sans-serif;
   }
@@ -31,7 +33,7 @@
   html,body{margin:0; padding:0; height:100%; overscroll-behavior-y:none;}
   body{
     font-family:var(--sans);
-    background:var(--ink);
+    background:#08201E;
     color:var(--ink);
     -webkit-font-smoothing:antialiased;
   }
@@ -54,6 +56,7 @@
   .back-btn{
     width:38px; height:38px; border-radius:50%; border:none; background:var(--white);
     display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
+    color:var(--ink);
   }
   .content{ flex:1; padding:0 20px 24px; display:flex; flex-direction:column; }
   .center-content{ flex:1; display:flex; flex-direction:column; justify-content:center; }
@@ -68,63 +71,71 @@
     background:var(--white); font-size:16px; font-family:var(--sans); color:var(--ink);
     outline:none;
   }
-  .field input:focus, .field select:focus{ border-color:var(--ink); }
+  .field input:focus, .field select:focus{ border-color:var(--in); }
 
   .btn{
     display:flex; align-items:center; justify-content:center; gap:8px;
     padding:16px; border-radius:16px; border:none; font-size:15.5px; font-weight:700;
     font-family:var(--sans); cursor:pointer; width:100%;
   }
-  .btn-primary{ background:var(--ink); color:var(--paper); }
-  .btn-primary:active{ background:#1a1712; }
-  .btn-outline{ background:transparent; color:var(--ink); border:1.5px solid var(--ink); }
+  .btn-primary{ background:linear-gradient(135deg, #14B8A6 0%, #0A6E64 100%); color:#FFFFFF; }
+  .btn-primary:active{ opacity:0.9; }
+  .btn-outline{ background:transparent; color:var(--in-deep); border:1.5px solid var(--in); }
   .btn-ghost{ background:var(--paper-dim); color:var(--ink-soft); }
   .btn-danger{ background:var(--out); color:var(--white); }
-  .btn-buy{ background:var(--accent); color:var(--ink); }
+  .btn-buy{ background:var(--accent); color:#FFFFFF; }
   .btn:disabled{ opacity:0.4; }
 
   .link-row{ text-align:center; margin-top:16px; font-size:14px; color:var(--ink-soft); }
-  .link-row a{ color:var(--ink); font-weight:700; text-decoration:none; }
+  .link-row a{ color:var(--in-deep); font-weight:700; text-decoration:none; }
 
   .stack{ display:flex; flex-direction:column; gap:10px; }
   .row-item{
     display:flex; align-items:center; justify-content:space-between;
-    background:var(--white); padding:14px 16px; border-radius:14px; box-shadow:var(--shadow);
+    background:var(--white); padding:14px 16px; border-radius:16px; box-shadow:var(--shadow);
   }
   .row-item .rname{ font-weight:600; font-size:15px; }
   .row-item .rdel{ background:none; border:none; padding:6px; color:var(--out); }
 
   .add-inline{ display:flex; gap:8px; margin-top:14px; }
   .add-inline input{ flex:1; }
-  .add-inline button{ width:52px; border-radius:14px; border:none; background:var(--ink); color:var(--paper); font-size:22px; display:flex; align-items:center; justify-content:center; }
+  .add-inline button{ width:52px; border-radius:14px; border:none; background:var(--in); color:#FFFFFF; font-size:22px; display:flex; align-items:center; justify-content:center; }
 
   .progress-dots{ display:flex; gap:6px; padding:16px 20px 0; }
   .progress-dots span{ height:4px; flex:1; border-radius:2px; background:var(--line); }
-  .progress-dots span.done{ background:var(--ink); }
+  .progress-dots span.done{ background:var(--in); }
 
   /* HOME */
   .home-header{ padding:22px 20px 6px; }
   .home-header .greet{ font-size:13px; color:var(--ink-soft); font-weight:600; }
-  .home-header .acc{ font-size:20px; font-weight:800; margin-top:2px; }
+  .home-header .acc{ font-size:20px; font-weight:800; margin-top:2px; color:var(--ink); }
   .home-cards{ flex:1; display:flex; flex-direction:column; gap:14px; padding:14px 20px 10px; }
   .big-card{
-    flex:1; border-radius:26px; padding:22px; display:flex; flex-direction:column; justify-content:space-between;
+    flex:1; border-radius:28px; padding:24px; display:flex; flex-direction:column; justify-content:space-between;
     position:relative; overflow:hidden; min-height:150px; border:none; cursor:pointer; text-align:left;
   }
-  .big-card.in{ background:var(--in); color:var(--in-soft); }
-  .big-card.out{ background:var(--out); color:var(--out-soft); }
-  .card-top-row{ display:flex; align-items:center; justify-content:space-between; }
-  .card-label{ font-size:14px; font-weight:700; opacity:0.85; display:flex; align-items:center; gap:8px;}
-  .card-pct{ font-size:12.5px; font-weight:700; background:rgba(255,255,255,0.18); padding:4px 10px; border-radius:20px; }
-  .card-amount{ font-size:30px; font-weight:800; letter-spacing:-0.5px; font-family:var(--mono); }
-  .card-sub{ font-size:12.5px; opacity:0.75; font-weight:600; }
+  .big-card.in{ background:linear-gradient(135deg, #14B8A6 0%, #0A6E64 100%); color:#FFFFFF; }
+  .big-card.out{ background:linear-gradient(135deg, #E0685A 0%, #A83A2F 100%); color:#FFFFFF; }
+  .big-card::after{
+    content:''; position:absolute; right:-40px; top:-40px; width:140px; height:140px;
+    border-radius:50%; background:rgba(255,255,255,0.08); pointer-events:none;
+  }
+  .card-top-row{ display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+  .card-label{ font-size:14.5px; font-weight:700; opacity:0.95; display:flex; align-items:center; gap:9px;}
+  .card-label .icn-circle{
+    width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.22);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .card-pct{ font-size:12.5px; font-weight:700; background:rgba(255,255,255,0.22); padding:5px 12px; border-radius:20px; }
+  .card-amount{ font-size:32px; font-weight:800; letter-spacing:-0.5px; font-family:var(--mono); position:relative; z-index:1; }
+  .card-sub{ font-size:12.5px; opacity:0.85; font-weight:600; position:relative; z-index:1; }
 
   .balance-strip{
-    margin:0 20px 14px; background:var(--white); border-radius:18px; padding:16px 18px;
-    box-shadow:var(--shadow); display:flex; justify-content:space-between; align-items:center;
+    margin:0 20px 14px; background:linear-gradient(135deg, #0F766E 0%, #0B4A44 100%); border-radius:22px; padding:20px 22px;
+    box-shadow:0 8px 24px rgba(11,74,68,0.25); display:flex; justify-content:space-between; align-items:center;
   }
-  .balance-strip .lbl{ font-size:12px; color:var(--ink-soft); font-weight:700; }
-  .balance-strip .val{ font-size:19px; font-weight:800; font-family:var(--mono); }
+  .balance-strip .lbl{ font-size:12px; color:rgba(255,255,255,0.75); font-weight:700; letter-spacing:0.3px; }
+  .balance-strip .val{ font-size:20px; font-weight:800; font-family:var(--mono); color:#FFFFFF; }
 
   .tabbar{
     display:flex; background:var(--white); border-top:1px solid var(--line);
@@ -135,27 +146,27 @@
     flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
     background:none; border:none; padding:8px 4px; color:var(--ink-soft); font-size:10.5px; font-weight:700;
   }
-  .tab-btn.active{ color:var(--ink); }
+  .tab-btn.active{ color:var(--in); }
 
   .fab{
     position:fixed; right:20px; bottom:calc(84px + env(safe-area-inset-bottom));
     width:56px; height:56px; border-radius:50%; border:none;
-    background:var(--ink); color:var(--paper); font-size:26px; font-weight:600;
+    background:linear-gradient(135deg, #14B8A6 0%, #0A6E64 100%); color:#FFFFFF; font-size:26px; font-weight:600;
     display:flex; align-items:center; justify-content:center;
-    box-shadow:0 4px 14px rgba(43,38,32,0.35); z-index:30; cursor:pointer;
+    box-shadow:0 6px 18px rgba(10,110,100,0.4); z-index:30; cursor:pointer;
   }
   .fab:active{ transform:scale(0.94); }
 
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(20,17,12,0.55); display:none; align-items:flex-end; justify-content:center; z-index:50;
+    position:fixed; inset:0; background:rgba(8,32,30,0.6); display:none; align-items:flex-end; justify-content:center; z-index:50;
   }
   .modal-overlay.active{ display:flex; }
   .modal-sheet{
-    background:var(--paper); width:100%; max-width:480px; border-radius:26px 26px 0 0;
+    background:var(--paper); width:100%; max-width:480px; border-radius:28px 28px 0 0;
     padding:22px 20px calc(22px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto;
   }
   .modal-handle{ width:40px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 18px; }
-  .modal-title{ font-size:19px; font-weight:800; margin:0 0 4px; }
+  .modal-title{ font-size:19px; font-weight:800; margin:0 0 4px; color:var(--ink); }
   .modal-sub{ font-size:13px; color:var(--ink-soft); margin:0 0 18px; }
 
   .source-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px;}
@@ -163,7 +174,7 @@
     background:var(--white); border:2px solid transparent; border-radius:16px; padding:14px 6px;
     display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;
   }
-  .source-opt.selected{ border-color:var(--ink); background:var(--paper-dim); }
+  .source-opt.selected{ border-color:var(--in); background:var(--in-soft); }
   .source-opt .sicon{ width:26px; height:26px; }
   .source-opt .sname{ font-size:11.5px; font-weight:700; text-align:center; }
   .source-opt .samt{ font-size:10.5px; color:var(--ink-soft); font-family:var(--mono);}
@@ -171,9 +182,9 @@
   .sub-select{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
   .chip{
     padding:9px 14px; border-radius:20px; border:1.5px solid var(--line); background:var(--white);
-    font-size:13px; font-weight:600; cursor:pointer;
+    font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);
   }
-  .chip.selected{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .chip.selected{ background:var(--in); color:#FFFFFF; border-color:var(--in); }
 
   .amount-input-wrap{ position:relative; margin-bottom:18px; }
   .amount-input-wrap .rp{ position:absolute; left:16px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--ink-soft); font-size:16px; }
@@ -182,17 +193,17 @@
   /* history */
   .hist-filter{ display:flex; gap:8px; margin:14px 20px 8px; overflow-x:auto; }
   .hist-item{
-    background:var(--white); border-radius:16px; padding:14px 16px; box-shadow:var(--shadow);
+    background:var(--white); border-radius:18px; padding:14px 16px; box-shadow:var(--shadow);
     display:flex; align-items:center; gap:12px; margin:0 20px 10px;
   }
-  .hist-icon{ width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .hist-icon.in{ background:var(--in-soft); }
-  .hist-icon.out{ background:var(--out-soft); }
+  .hist-icon{ width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .hist-icon.in{ background:var(--in-soft); color:var(--in-deep); }
+  .hist-icon.out{ background:var(--out-soft); color:var(--out); }
   .hist-info{ flex:1; min-width:0; }
-  .hist-name{ font-weight:700; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hist-name{ font-weight:700; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
   .hist-meta{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
   .hist-amt{ font-family:var(--mono); font-weight:800; font-size:15px; white-space:nowrap; }
-  .hist-amt.in{ color:var(--in); }
+  .hist-amt.in{ color:var(--in-deep); }
   .hist-amt.out{ color:var(--out); }
   .hist-del{ background:none; border:none; padding:4px; color:var(--ink-soft); flex-shrink:0; }
 
@@ -201,13 +212,13 @@
   .empty-state p{ font-size:14px; margin:0; }
 
   .summary-mini{ display:flex; gap:10px; padding:0 20px 6px; }
-  .summary-mini .box{ flex:1; background:var(--white); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow); }
+  .summary-mini .box{ flex:1; background:var(--white); border-radius:16px; padding:12px 14px; box-shadow:var(--shadow); }
   .summary-mini .box .l{ font-size:11px; color:var(--ink-soft); font-weight:700; }
   .summary-mini .box .v{ font-family:var(--mono); font-weight:800; font-size:15px; margin-top:2px; }
 
   .toast{
     position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px);
-    background:var(--ink); color:var(--paper); padding:12px 20px; border-radius:14px; font-size:13.5px; font-weight:600;
+    background:linear-gradient(135deg, #0F766E 0%, #0B2B29 100%); color:#FFFFFF; padding:12px 20px; border-radius:14px; font-size:13.5px; font-weight:600;
     opacity:0; transition:all 0.25s ease; pointer-events:none; z-index:100; max-width:80%; text-align:center;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
@@ -238,7 +249,7 @@
 
   .update-toast{
     position:fixed; top:calc(14px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) translateY(-140%);
-    background:var(--ink); color:var(--paper); padding:11px 18px; border-radius:14px; font-size:13px; font-weight:700;
+    background:linear-gradient(135deg, #0F766E 0%, #0B2B29 100%); color:#FFFFFF; padding:11px 18px; border-radius:14px; font-size:13px; font-weight:700;
     display:flex; align-items:center; gap:8px; transition:transform 0.3s ease; z-index:200; max-width:88%;
   }
   .update-toast.show{ transform:translateX(-50%) translateY(0); }
@@ -261,13 +272,19 @@
     </div>
     <div class="content center-content">
       <div style="text-align:center; margin-bottom:8px;">
-        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" style="margin-bottom:14px;">
-          <rect x="3" y="7" width="18" height="13" rx="2.5" fill="#2B2620"/>
-          <path d="M7 7V6a5 5 0 0110 0v1" stroke="#2B2620" stroke-width="2" fill="none"/>
-          <circle cx="12" cy="13" r="1.8" fill="#F5EFE3"/>
-          <rect x="11.2" y="14.2" width="1.6" height="3" rx="0.8" fill="#F5EFE3"/>
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" style="margin-bottom:14px;">
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#14B8A6"/>
+              <stop offset="1" stop-color="#0A6E64"/>
+            </linearGradient>
+          </defs>
+          <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="url(#logoGrad)"/>
+          <rect x="7" y="9" width="10" height="7.2" rx="1.8" fill="#FFFFFF"/>
+          <path d="M8.6 9V8a3.4 3.4 0 016.8 0v1" stroke="#FFFFFF" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <circle cx="12" cy="12.6" r="1.3" fill="#0D9488"/>
         </svg>
-        <h2 class="title" style="margin-bottom:0;">Catatan Uang</h2>
+        <h2 class="title" style="margin-bottom:0;">KeuanganPribadi</h2>
         <p class="sub">Masuk ke akunmu untuk lanjut mencatat</p>
         <p class="sub" id="app-version-label" style="margin-top:-18px; font-size:11.5px; opacity:0.6;"></p>
       </div>
@@ -287,7 +304,7 @@
   <!-- ===================== AUTH: REGISTER ===================== -->
   <section class="screen" id="screen-register">
     <div class="top">
-      <button class="back-btn" onclick="goTo('screen-login')">←</button>
+      <button class="back-btn" onclick="goTo('screen-login')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <h1>Akun baru</h1>
       <div style="width:38px"></div>
     </div>
@@ -417,7 +434,7 @@
       <button class="big-card in" onclick="openTxModal('in')">
         <div class="card-top-row">
           <div class="card-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="icn-circle"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             Pemasukan
           </div>
           <span class="card-pct" id="pct-in">0%</span>
@@ -430,7 +447,7 @@
       <button class="big-card out" onclick="openTxModal('out')">
         <div class="card-top-row">
           <div class="card-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="icn-circle"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             Pengeluaran
           </div>
           <span class="card-pct" id="pct-out">0%</span>
@@ -443,7 +460,7 @@
     </div>
     <div class="tabbar">
       <button class="tab-btn active" onclick="switchTab('home')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-8 9 8M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V20a1 1 0 001 1h4v-6a1 1 0 011-1h2a1 1 0 011 1v6h4a1 1 0 001-1V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Beranda
       </button>
       <button class="tab-btn" onclick="switchTab('history')">
@@ -451,7 +468,7 @@
         Riwayat
       </button>
       <button class="tab-btn" onclick="switchTab('wallets')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="14" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.8"/><path d="M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         Dompet
       </button>
       <button class="tab-btn" onclick="switchTab('settings')">
@@ -486,7 +503,7 @@
     </div>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-8 9 8M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V20a1 1 0 001 1h4v-6a1 1 0 011-1h2a1 1 0 011 1v6h4a1 1 0 001-1V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Beranda
       </button>
       <button class="tab-btn active" onclick="switchTab('history')">
@@ -494,7 +511,7 @@
         Riwayat
       </button>
       <button class="tab-btn" onclick="switchTab('wallets')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="14" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.8"/><path d="M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         Dompet
       </button>
       <button class="tab-btn" onclick="switchTab('settings')">
@@ -529,7 +546,7 @@
     <button class="fab" id="wallet-fab" onclick="openAddWalletModal()" title="Tambah bank / e-wallet">+</button>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-8 9 8M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V20a1 1 0 001 1h4v-6a1 1 0 011-1h2a1 1 0 011 1v6h4a1 1 0 001-1V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Beranda
       </button>
       <button class="tab-btn" onclick="switchTab('history')">
@@ -537,7 +554,7 @@
         Riwayat
       </button>
       <button class="tab-btn active" onclick="switchTab('wallets')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="14" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.8"/><path d="M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         Dompet
       </button>
       <button class="tab-btn" onclick="switchTab('settings')">
@@ -568,7 +585,7 @@
     </div>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-8 9 8M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V20a1 1 0 001 1h4v-6a1 1 0 011-1h2a1 1 0 011 1v6h4a1 1 0 001-1V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Beranda
       </button>
       <button class="tab-btn" onclick="switchTab('history')">
@@ -576,7 +593,7 @@
         Riwayat
       </button>
       <button class="tab-btn" onclick="switchTab('wallets')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="14" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.8"/><path d="M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         Dompet
       </button>
       <button class="tab-btn active" onclick="switchTab('settings')">
