@@ -578,10 +578,22 @@
         <div class="settings-row"><span class="srl">Total transaksi</span><span class="srv" id="set-txcount">0</span></div>
       </div>
       <div style="margin-top:24px;">
+        <p class="sub" style="margin-bottom:10px; text-align:left;">Backup data</p>
+        <button class="btn btn-outline" onclick="exportBackup()" style="margin-bottom:10px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="margin-right:6px; vertical-align:-3px;"><path d="M12 3v12M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Unduh backup (.json)
+        </button>
+        <button class="btn btn-outline" onclick="triggerImportBackup()" style="margin-bottom:12px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="margin-right:6px; vertical-align:-3px;"><path d="M12 21V9M7 14l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Pulihkan dari backup
+        </button>
+        <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;" onchange="handleImportFile(event)">
+      </div>
+      <div style="margin-top:8px;">
         <button class="btn btn-outline" onclick="handleLogout()" style="margin-bottom:12px;">Keluar akun</button>
         <button class="btn btn-danger" onclick="confirmReset()">Hapus semua data akun ini</button>
       </div>
-      <p class="sub" style="margin-top:20px; text-align:center;">Data tersimpan di perangkat ini saja dan tidak akan hilang kecuali data browser dihapus.</p>
+      <p class="sub" style="margin-top:20px; text-align:center;">Data tersimpan di perangkat ini saja dan akan ikut terhapus jika app dihapus/di-uninstall. Unduh backup secara berkala biar aman.</p>
     </div>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')">

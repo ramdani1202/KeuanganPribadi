@@ -705,8 +705,100 @@ function manualCheckUpdate(){
 }
 
 /* =========================================================
-   INIT
+   BACKUP MANUAL (Export / Import)
+   Data disimpan di localStorage browser, jadi akan ikut hilang
+   kalau app di-uninstall dari HP. Fitur ini memungkinkan user
+   men-download seluruh datanya jadi file .json, dan memulihkannya
+   lagi nanti (misal setelah reinstall / ganti HP).
    ========================================================= */
+function exportBackup(){
+  if(!currentUser || !currentData){ showToast('Belum ada akun yang login'); return; }
+
+  const users = getUsers();
+  const userRecord = users[currentUser];
+
+  const backup = {
+    app: 'KeuanganPribadi',
+    backupVersion: 1,
+    exportedAt: new Date().toISOString(),
+    username: currentUser,
+    userRecord: userRecord,
+    data: currentData
+  };
+
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `backup-keuanganpribadi-${currentUser}-${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast('Backup berhasil diunduh');
+}
+
+function triggerImportBackup(){
+  document.getElementById('import-file-input').click();
+}
+
+function handleImportFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let backup;
+    try{
+      backup = JSON.parse(e.target.result);
+    }catch(err){
+      showToast('File backup tidak valid');
+      event.target.value = '';
+      return;
+    }
+
+    if(!backup || !backup.username || !backup.data){
+      showToast('File backup tidak valid');
+      event.target.value = '';
+      return;
+    }
+
+    const targetUsername = backup.username;
+    const users = getUsers();
+    const alreadyExists = !!users[targetUsername];
+
+    const doImport = () => {
+      if(backup.userRecord){
+        users[targetUsername] = backup.userRecord;
+        saveUsers(users);
+      }
+      saveUserData(targetUsername, backup.data);
+      showToast(`Backup akun "${targetUsername}" berhasil dipulihkan`);
+      event.target.value = '';
+
+      // Kalau akun yang dipulihkan adalah akun yang sedang login, refresh tampilan
+      if(currentUser === targetUsername){
+        currentData = getUserData(targetUsername);
+        refreshHome();
+      }
+    };
+
+    if(alreadyExists){
+      const ok = confirm(`Akun "${targetUsername}" sudah ada di perangkat ini. Timpa dengan data dari file backup?`);
+      if(!ok){ event.target.value = ''; return; }
+    }
+    doImport();
+  };
+  reader.onerror = () => {
+    showToast('Gagal membaca file backup');
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+
 (function init(){
   initServiceWorker();
   const session = localStorage.getItem(LS_SESSION);
