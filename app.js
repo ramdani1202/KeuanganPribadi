@@ -290,9 +290,6 @@ function escapeHtml(str){
    ========================================================= */
 function enterApp(){
   goTo('screen-home');
-  document.getElementById('home-username').textContent = currentUser;
-  const hr = new Date().getHours();
-  document.getElementById('home-greet').textContent = hr < 11 ? 'Selamat pagi,' : hr < 15 ? 'Selamat siang,' : hr < 18 ? 'Selamat sore,' : 'Selamat malam,';
   refreshHome();
 }
 
@@ -510,6 +507,14 @@ function deleteTx(id){
    WALLETS TAB
    ========================================================= */
 function refreshWallets(){
+  const greetEl = document.getElementById('wallet-greet');
+  const userEl = document.getElementById('wallet-username');
+  if(greetEl && userEl){
+    const hr = new Date().getHours();
+    greetEl.textContent = hr < 11 ? 'Selamat pagi,' : hr < 15 ? 'Selamat siang,' : hr < 18 ? 'Selamat sore,' : 'Selamat malam,';
+    userEl.textContent = currentUser;
+  }
+
   const bankWrap = document.getElementById('wallet-bank-list');
   bankWrap.innerHTML = '';
   if(currentData.banks.length === 0){
