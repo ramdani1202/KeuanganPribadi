@@ -137,6 +137,15 @@
   }
   .tab-btn.active{ color:var(--ink); }
 
+  .fab{
+    position:fixed; right:20px; bottom:calc(84px + env(safe-area-inset-bottom));
+    width:56px; height:56px; border-radius:50%; border:none;
+    background:var(--ink); color:var(--paper); font-size:26px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(43,38,32,0.35); z-index:30; cursor:pointer;
+  }
+  .fab:active{ transform:scale(0.94); }
+
   .modal-overlay{
     position:fixed; inset:0; background:rgba(20,17,12,0.55); display:none; align-items:flex-end; justify-content:center; z-index:50;
   }
@@ -506,25 +515,18 @@
       <h1>Dompet & saldo</h1>
       <div></div>
     </div>
-    <div class="content" style="flex:1; overflow-y:auto;">
+    <div class="content" style="flex:1; overflow-y:auto; padding-bottom:90px;">
       <p class="sub" style="margin-bottom:10px;">Bank</p>
       <div class="stack" id="wallet-bank-list" style="margin-bottom:22px;"></div>
-      <div class="add-inline" style="margin-bottom:22px;">
-        <input type="text" id="wallet-bank-input" placeholder="Tambah nama bank">
-        <button onclick="addBankLive()">+</button>
-      </div>
       <p class="sub" style="margin-bottom:10px;">E-wallet</p>
       <div class="stack" id="wallet-ewallet-list" style="margin-bottom:22px;"></div>
-      <div class="add-inline" style="margin-bottom:22px;">
-        <input type="text" id="wallet-ewallet-input" placeholder="Tambah nama e-wallet">
-        <button onclick="addEwalletLive()">+</button>
-      </div>
       <p class="sub" style="margin-bottom:10px;">Uang tunai</p>
       <div class="row-item">
         <span class="rname">Cash di tangan</span>
         <span style="font-family:var(--mono); font-weight:800;" id="wallet-cash-display">Rp0</span>
       </div>
     </div>
+    <button class="fab" id="wallet-fab" onclick="openAddWalletModal()" title="Tambah bank / e-wallet">+</button>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-8 9 8M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
@@ -591,6 +593,25 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div id="tx-modal-body"></div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: TAMBAH BANK / E-WALLET ===================== -->
+<div class="modal-overlay" id="add-wallet-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Tambah dompet</p>
+    <p class="modal-sub">Pilih jenis, lalu isi namanya.</p>
+
+    <div class="sub-select" id="add-wallet-type-chips">
+      <div class="chip selected" data-type="bank" onclick="setAddWalletType('bank')">Bank</div>
+      <div class="chip" data-type="ewallet" onclick="setAddWalletType('ewallet')">E-wallet</div>
+    </div>
+
+    <input type="text" id="add-wallet-name-input" placeholder="Nama bank" style="width:100%; margin-bottom:14px;">
+
+    <button onclick="submitAddWallet()" style="width:100%; padding:14px; border-radius:16px; border:none; background:var(--ink); color:var(--paper); font-weight:700; font-size:15px;">Simpan</button>
+    <button onclick="closeAddWalletModal()" style="width:100%; padding:14px; border-radius:16px; border:none; background:transparent; color:var(--ink-soft); font-weight:600; font-size:14px; margin-top:6px;">Batal</button>
   </div>
 </div>
 

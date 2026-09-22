@@ -402,6 +402,9 @@ function closeTxModal(){
 document.getElementById('tx-modal').addEventListener('click', (e)=>{
   if(e.target.id === 'tx-modal') closeTxModal();
 });
+document.getElementById('add-wallet-modal').addEventListener('click', (e)=>{
+  if(e.target.id === 'add-wallet-modal') closeAddWalletModal();
+});
 
 function submitTx(){
   const name = document.getElementById('tx-name').value.trim();
@@ -536,27 +539,43 @@ function refreshWallets(){
   document.getElementById('wallet-cash-display').textContent = fmtRupiah(currentData.balances.cash||0);
 }
 
-function addBankLive(){
-  const input = document.getElementById('wallet-bank-input');
-  const val = input.value.trim();
-  if(!val) return;
-  currentData.banks.push(val);
-  currentData.balances.bank[val] = 0;
-  saveUserData(currentUser, currentData);
-  input.value = '';
-  refreshWallets();
-  showToast('Bank ditambahkan');
+let addWalletType = 'bank';
+
+function openAddWalletModal(){
+  addWalletType = 'bank';
+  document.querySelectorAll('#add-wallet-type-chips .chip').forEach(c => c.classList.remove('selected'));
+  document.querySelector('#add-wallet-type-chips .chip[data-type="bank"]').classList.add('selected');
+  document.getElementById('add-wallet-name-input').value = '';
+  document.getElementById('add-wallet-name-input').placeholder = 'Nama bank';
+  document.getElementById('add-wallet-modal').classList.add('active');
+  setTimeout(() => document.getElementById('add-wallet-name-input').focus(), 150);
 }
-function addEwalletLive(){
-  const input = document.getElementById('wallet-ewallet-input');
+function closeAddWalletModal(){
+  document.getElementById('add-wallet-modal').classList.remove('active');
+}
+function setAddWalletType(type){
+  addWalletType = type;
+  document.querySelectorAll('#add-wallet-type-chips .chip').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`#add-wallet-type-chips .chip[data-type="${type}"]`).classList.add('selected');
+  document.getElementById('add-wallet-name-input').placeholder = type === 'bank' ? 'Nama bank' : 'Nama e-wallet';
+}
+function submitAddWallet(){
+  const input = document.getElementById('add-wallet-name-input');
   const val = input.value.trim();
-  if(!val) return;
-  currentData.ewallets.push(val);
-  currentData.balances.ewallet[val] = 0;
+  if(!val){ showToast('Nama tidak boleh kosong'); return; }
+
+  if(addWalletType === 'bank'){
+    currentData.banks.push(val);
+    currentData.balances.bank[val] = 0;
+    showToast('Bank ditambahkan');
+  } else {
+    currentData.ewallets.push(val);
+    currentData.balances.ewallet[val] = 0;
+    showToast('E-wallet ditambahkan');
+  }
   saveUserData(currentUser, currentData);
-  input.value = '';
   refreshWallets();
-  showToast('E-wallet ditambahkan');
+  closeAddWalletModal();
 }
 
 /* =========================================================
