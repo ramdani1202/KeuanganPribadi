@@ -622,12 +622,19 @@ function printReceipt(){
 /* =========================================================
    AUTO-UPDATE (Service Worker)
    Tujuan: begitu ada versi baru ter-deploy di GitHub Pages, app
-   mendeteksinya sendiri, download di background, lalu reload
-   otomatis — tanpa user perlu clear cache/data Chrome manual.
+   mendeteksinya sendiri tanpa kamu perlu naikkan nomor versi apa
+   pun secara manual — dan tanpa user perlu clear cache Chrome.
+
+   Cara kerja sekarang: sw.js pakai strategi network-first untuk
+   semua file inti (index.html, app.js, manifest.json) dengan
+   cache:'no-store', jadi begitu user online, file yang dipakai
+   SELALU versi terbaru langsung dari server — bukan dari cache.
+   Cache di sw.js cuma dipakai sebagai fallback offline.
+   Jadi kamu tinggal upload ulang file ke GitHub Pages, dan versi
+   baru langsung kepakai di request berikutnya. Tidak perlu ubah
+   apa pun di sw.js setiap deploy.
    ========================================================= */
-const APP_DISPLAY_VERSION = 'v3';
 let swRegistration = null;
-let updateReloadTriggered = false;
 
 function setUpdateBtnState(mode){
   const btn = document.getElementById('update-check-btn');
@@ -653,77 +660,24 @@ function initServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
 
   const versionLabel = document.getElementById('app-version-label');
-  if(versionLabel) versionLabel.textContent = 'Versi aplikasi ' + APP_DISPLAY_VERSION;
+  if(versionLabel) versionLabel.textContent = 'Auto-update aktif';
 
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then((reg) => {
       swRegistration = reg;
-
-      // Kalau ada worker baru yang sudah "waiting" (selesai di-download
-      // tapi belum aktif), langsung aktifkan.
-      if(reg.waiting){
-        activateNewServiceWorker(reg.waiting);
-      }
-
-      // Saat SW baru ketemu & sedang di-install (state berubah)
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if(!newWorker) return;
-        setUpdateBtnState('checking');
-        newWorker.addEventListener('statechange', () => {
-          if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
-            // Versi baru siap dipakai -> langsung aktifkan & reload
-            setUpdateBtnState('available');
-            activateNewServiceWorker(newWorker);
-          }
-        });
-      });
     }).catch(()=>{});
-
-    // Begitu controller berganti (SW baru sudah ambil alih), reload
-    // sekali supaya semua file (html/js) yang tampil adalah versi baru.
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if(updateReloadTriggered) return;
-      updateReloadTriggered = true;
-      showUpdateToast('Pembaruan siap, memuat ulang…');
-      setTimeout(() => window.location.reload(), 500);
-    });
-  });
-
-  // Cek update tiap kali app dibuka lagi / tab kembali aktif / balik dari background
-  document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'visible') checkForUpdate();
-  });
-  window.addEventListener('focus', checkForUpdate);
-  window.addEventListener('pageshow', checkForUpdate);
-
-  // Cek sekali saat pertama kali load
-  checkForUpdate();
-}
-
-function activateNewServiceWorker(worker){
-  showUpdateToast('Memperbarui aplikasi…');
-  worker.postMessage('SKIP_WAITING');
-}
-
-function checkForUpdate(){
-  if(!swRegistration) return;
-  setUpdateBtnState('checking');
-  swRegistration.update().catch(()=>{}).finally(() => {
-    // Kasih jeda kecil biar animasi spin terlihat natural, lalu balik normal
-    // kalau memang tidak ada versi baru (updatefound tidak akan terpanggil).
-    setTimeout(() => {
-      if(!document.getElementById('update-check-btn').classList.contains('has-update')){
-        setUpdateBtnState('idle');
-      }
-    }, 900);
   });
 }
 
+// Tombol ↻ manual: karena file inti (index.html/app.js) sudah
+// network-first, cara paling pasti untuk "cek update sekarang" adalah
+// muat ulang halaman langsung dari server.
 function manualCheckUpdate(){
-  if(!('serviceWorker' in navigator)){ showToast('Perangkat tidak mendukung auto-update'); return; }
+  setUpdateBtnState('checking');
   showToast('Mengecek pembaruan…');
-  checkForUpdate();
+  setTimeout(() => {
+    window.location.reload();
+  }, 400);
 }
 
 /* =========================================================

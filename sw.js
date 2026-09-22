@@ -1,9 +1,20 @@
-// Naikkan APP_VERSION setiap kali ada perubahan file (index.html/app.js/dll).
-// Perubahan pada string ini membuat browser mendeteksi sw.js sebagai "berbeda"
-// dan otomatis menjalankan siklus update (install -> activate) tanpa perlu
-// clear cache manual di Chrome.
-const APP_VERSION = 'v3';
-const CACHE_NAME = `catatan-uang-${APP_VERSION}`;
+// CATATAN PENTING:
+// Browser membandingkan isi sw.js APA ADANYA (byte per byte) untuk tahu
+// "ada versi baru atau tidak". Karena itu versi cache TIDAK dihitung dari
+// hash di dalam sw.js ini (itu tidak akan pernah trigger update -- isi
+// file ini sendiri tidak pernah berubah). Sebagai gantinya:
+//
+// 1. sw.js ini pakai strategi NETWORK-FIRST untuk semua file inti
+//    (index.html, app.js, manifest.json) -- jadi begitu online, user
+//    SELALU dapat versi terbaru langsung dari server, tanpa nunggu
+//    siklus install/activate service worker sama sekali.
+// 2. Cache di sini fungsinya cuma buat offline fallback (jaga-jaga
+//    kalau lagi tidak ada koneksi internet).
+// 3. Hasilnya: kamu tinggal upload ulang index.html/app.js ke GitHub
+//    Pages, dan user yang online akan langsung lihat versi terbaru
+//    saat itu juga -- TANPA perlu naikkan versi apa pun di file ini.
+
+const CACHE_NAME = 'catatan-uang-offline-cache';
 
 const ASSETS = [
   './',
@@ -19,15 +30,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
-  // Tidak langsung skipWaiting di sini — biar app.js yang mengontrol kapan
-  // versi baru diaktifkan (setelah selesai download), supaya reload terjadi
-  // dengan mulus dan terkontrol, bukan tiba-tiba di tengah pemakaian.
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -38,26 +41,43 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Halaman utama: network-first, biar versi terbaru selalu diprioritaskan
-  // saat online, dan tetap bisa dibuka offline lewat cache.
-  if (event.request.mode === 'navigate') {
+  const url = new URL(event.request.url);
+  const isCoreFile =
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('/app.js') ||
+    url.pathname.endsWith('/manifest.json') ||
+    url.pathname.endsWith('/index.html');
+
+  if (isCoreFile) {
+    // NETWORK-FIRST + no-store: selalu ambil versi terbaru dari server
+    // dulu kalau online. Ini kuncinya -- tidak bergantung sama sekali
+    // pada siklus update service worker, jadi tidak butuh naikkan versi.
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-store' })
         .then((resp) => {
           const clone = resp.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return resp;
         })
-        .catch(() => caches.match(event.request).then((r) => r || caches.match('./index.html')))
+        .catch(() =>
+          caches.match(event.request).then((r) => r || caches.match('./index.html'))
+        )
     );
     return;
   }
 
-  // Aset lain: cache-first supaya cepat & tetap jalan offline,
-  // tapi tetap diperbarui diam-diam di background (stale-while-revalidate).
+  // Aset statis lain (icon dll): cache-first, tetap diperbarui diam-diam
+  // di background (stale-while-revalidate). Ini aman untuk aset yang
+  // jarang berubah.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request).then((resp) => {

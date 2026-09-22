@@ -41,27 +41,22 @@ catatan-uang/
     └── icon-maskable.svg
 ```
 
-## Auto-update (penting saat kamu ubah/upload ulang file)
+## Auto-update (tidak perlu naikkan versi manual)
 
-App ini sudah auto-update — user tidak perlu clear cache Chrome manual tiap kali kamu deploy versi baru.
+App ini auto-update sepenuhnya — **kamu tidak perlu mengubah apa pun di `sw.js` tiap kali deploy**, dan user tidak perlu clear cache Chrome manual.
 
 **Cara kerjanya:**
-- Tiap kali app dibuka, dibuka lagi dari background, atau tab jadi aktif kembali, app otomatis cek apakah ada `sw.js` versi baru di server
-- Kalau ada, versi baru otomatis di-download di background lalu langsung diaktifkan
-- Setelah aktif, halaman reload sendiri (muncul notifikasi kecil "Memperbarui aplikasi…")
-- Ada juga tombol lingkaran ↻ di pojok kanan atas halaman login untuk cek manual kapan saja
+- File inti (`index.html`, `app.js`, `manifest.json`) diambil dengan strategi **network-first**: setiap kali file itu dibutuhkan dan user online, browser **selalu ambil versi terbaru langsung dari server** (bukan dari cache).
+- Cache di `sw.js` hanya dipakai sebagai cadangan untuk mode **offline** (kalau tidak ada internet).
+- Karena itu, begitu kamu upload ulang `index.html` atau `app.js` yang sudah diedit ke GitHub Pages, request berikutnya dari user (reload halaman / buka app lagi) otomatis dapat versi terbaru — **tanpa perlu naikkan nomor versi apa pun**.
+- Tombol lingkaran ↻ di pojok kanan atas halaman login bisa dipakai untuk memuat ulang halaman kapan saja secara manual (berguna kalau user mau cek update sekarang juga).
 
-**Yang WAJIB kamu lakukan tiap kali update/upload ulang file ke GitHub:**
+**Cara deploy update sekarang cukup:**
+1. Edit file (`index.html` / `app.js` / dll) seperlunya
+2. Upload ulang / replace file yang sama di GitHub (nama file harus sama)
+3. Selesai — tidak ada langkah tambahan lain
 
-Buka `sw.js`, cari baris ini di paling atas:
-```js
-const APP_VERSION = 'v3';
-```
-Naikkan jadi `'v4'`, `'v5'`, dst — **setiap kali** kamu mengubah file apa pun (index.html, app.js, dll) dan upload ulang.
-
-Kenapa harus manual naikkan versi? Karena begitulah cara browser tahu "file ini berbeda dari sebelumnya, saatnya update" — kalau isi `sw.js` persis sama seperti sebelumnya, browser menganggap tidak ada perubahan dan user lama akan tetap memakai versi cache lama.
-
-(Opsional, biar rapi: baris `APP_DISPLAY_VERSION` di `app.js` juga bisa disamakan, hanya untuk ditampilkan sebagai label versi di halaman login — tidak wajib untuk auto-update itu sendiri.)
+**Catatan:** strategi ini mengutamakan "selalu versi terbaru saat online" dibanding "hemat kuota/loading instan dari cache". Untuk app sesederhana ini bedanya nyaris tidak terasa (file kecil), tapi kalau suatu saat filenya jadi besar, pertimbangkan pakai hashing di nama file per deploy (butuh build step) untuk performa maksimal.
 
 ## Catatan penting
 
