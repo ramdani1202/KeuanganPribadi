@@ -61,10 +61,57 @@ function showToast(msg){
   window._toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
 }
 function goTo(screenId){
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+  // Kalau ada transisi yang masih berjalan, selesaikan dulu secara instan
+  // supaya klik cepat berturut-turut (mis. ganti tab dgn cepat) tidak bikin
+  // dua layar sama-sama "active" secara bersamaan.
+  if(window._screenTransitionCleanup){
+    window._screenTransitionCleanup();
+    window._screenTransitionCleanup = null;
+  }
+
+  const current = document.querySelector('.screen.active');
+  const next = document.getElementById(screenId);
+  if(!next || current === next) return;
+
+  if(!current){
+    next.classList.add('active');
+    return;
+  }
+
+  // arah animasi: tabbar (home/history/wallets/settings) pakai crossfade halus,
+  // alur onboarding/login pakai slide maju yang terasa "melangkah"
+  const tabScreens = ['screen-home','screen-history','screen-wallets','screen-settings'];
+  const isTabSwitch = tabScreens.includes(current.id) && tabScreens.includes(screenId);
+
+  current.classList.add(isTabSwitch ? 'leaving-fade' : 'leaving-slide');
+  next.classList.add('active', isTabSwitch ? 'entering-fade' : 'entering-slide');
+
+  const cleanup = () => {
+    current.classList.remove('active','leaving-fade','leaving-slide');
+    next.classList.remove('entering-fade','entering-slide');
+    next.removeEventListener('animationend', cleanup);
+    clearTimeout(fallbackTimer);
+    if(window._screenTransitionCleanup === cleanup) window._screenTransitionCleanup = null;
+  };
+  next.addEventListener('animationend', cleanup);
+  // fallback kalau animationend tidak fire (mis. tab background)
+  const fallbackTimer = setTimeout(cleanup, 400);
+  window._screenTransitionCleanup = cleanup;
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ---------- Modal open/close terpusat (biar transisi slide-up konsisten) ---------- */
+function openModal(id){
+  const el = document.getElementById(id);
+  el.style.display = 'flex';
+  // paksa reflow dulu sebelum tambah class 'active', supaya transisi CSS kepicu (bukan langsung lompat ke state akhir)
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('active')));
+}
+function closeModal(id){
+  const el = document.getElementById(id);
+  el.classList.remove('active');
+  setTimeout(() => { if(!el.classList.contains('active')) el.style.display = ''; }, 320);
+}
 
 /* ---------- Storage helpers ---------- */
 function getUsers(){
@@ -232,7 +279,7 @@ function walletRowHTML(item, i, removeFn){
   const logoHTML = item.logo
     ? `<img src="${item.logo}" class="wlogo" alt="">`
     : `<span class="wlogo wlogo-fallback">${escapeHtml((item.name||'?').charAt(0).toUpperCase())}</span>`;
-  return `<div class="row-item">
+  return `<div class="row-item" style="animation-delay:${i*40}ms">
       ${logoHTML}
       <span class="rname">${escapeHtml(item.name)}</span>
       <button class="rdel" onclick="${removeFn}(${i})">
@@ -270,8 +317,8 @@ function openWalletPicker(context){
   pickerContext = context;
   const kind = (context === 'ob-ewallet' || context === 'wallets-ewallet') ? 'ewallet' : 'bank';
   const title = kind === 'bank' ? 'Pilih bank' : 'Pilih e-wallet';
-  const grid = catalogFor(kind).map(c => `
-    <div class="source-opt" onclick="pickWalletFromCatalog('${kind}','${c.key}')">
+  const grid = catalogFor(kind).map((c,idx) => `
+    <div class="source-opt" style="animation-delay:${idx*30}ms" onclick="pickWalletFromCatalog('${kind}','${c.key}')">
       <img src="${c.logo}" class="sicon-logo" alt="">
       <span class="sname">${escapeHtml(c.name)}</span>
     </div>`).join('');
@@ -282,10 +329,10 @@ function openWalletPicker(context){
     <p class="modal-sub">Boleh pilih yang sama lebih dari sekali (mis. 2 rekening berbeda).</p>
     <div class="source-grid">${grid}</div>
   `;
-  document.getElementById('wallet-picker-modal').classList.add('active');
+  openModal('wallet-picker-modal');
 }
 function closeWalletPicker(){
-  document.getElementById('wallet-picker-modal').classList.remove('active');
+  closeModal('wallet-picker-modal');
 }
 
 function pickWalletFromCatalog(kind, key){
@@ -426,13 +473,25 @@ function todayTx(){
   return currentData.transactions.filter(t => t.date.slice(0,10) === tk);
 }
 
+/* Update teks angka dengan animasi "pop" -- cuma jalan kalau nilainya
+   benar-benar berubah, supaya tidak animasi terus tiap refresh biasa */
+function setAmountText(id, text){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(el.textContent === text) return;
+  el.textContent = text;
+  el.classList.remove('pop');
+  void el.offsetWidth; // force reflow biar animasi bisa retrigger
+  el.classList.add('pop');
+}
+
 function refreshHome(){
-  document.getElementById('home-total-balance').textContent = fmtRupiah(totalBalance());
+  setAmountText('home-total-balance', fmtRupiah(totalBalance()));
   const tx = todayTx();
   const inTotal = tx.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0);
   const outTotal = tx.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0);
-  document.getElementById('total-in').textContent = fmtRupiah(inTotal);
-  document.getElementById('total-out').textContent = fmtRupiah(outTotal);
+  setAmountText('total-in', fmtRupiah(inTotal));
+  setAmountText('total-out', fmtRupiah(outTotal));
   const sum = inTotal + outTotal;
   document.getElementById('pct-in').textContent = sum ? Math.round(inTotal/sum*100) + '%' : '0%';
   document.getElementById('pct-out').textContent = sum ? Math.round(outTotal/sum*100) + '%' : '0%';
@@ -464,7 +523,7 @@ function openTxModal(type){
   let sourceGridHTML = '<div class="source-grid" id="tx-source-grid">';
   sources.forEach((s, idx) => {
     const iconHTML = s.logo ? `<img src="${s.logo}" class="sicon-logo" alt="">` : sourceIconSVG(s.type);
-    sourceGridHTML += `<div class="source-opt" data-idx="${idx}" onclick="selectTxSource(${idx})">
+    sourceGridHTML += `<div class="source-opt" style="animation-delay:${idx*30}ms" data-idx="${idx}" onclick="selectTxSource(${idx})">
       ${iconHTML}
       <span class="sname">${escapeHtml(s.name)}</span>
       <span class="samt">${fmtRupiah(s.bal)}</span>
@@ -490,7 +549,7 @@ function openTxModal(type){
       ${type === 'in' ? 'Simpan pemasukan' : 'Buy — catat pengeluaran'}
     </button>
   `;
-  document.getElementById('tx-modal').classList.add('active');
+  openModal('tx-modal');
 }
 
 function selectTxSource(idx){
@@ -500,7 +559,7 @@ function selectTxSource(idx){
 }
 
 function closeTxModal(){
-  document.getElementById('tx-modal').classList.remove('active');
+  closeModal('tx-modal');
 }
 document.getElementById('tx-modal').addEventListener('click', (e)=>{
   if(e.target.id === 'tx-modal') closeTxModal();
@@ -574,11 +633,12 @@ function refreshHistory(){
     return;
   }
 
-  list.innerHTML = txs.map(t => {
+  list.innerHTML = txs.map((t, i) => {
     const d = new Date(t.date);
     const dateStr = d.toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
     const timeStr = d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
-    return `<div class="hist-item">
+    const delay = Math.min(i, 12) * 30;
+    return `<div class="hist-item" style="animation-delay:${delay}ms">
       <div class="hist-icon ${t.type}">${txIconSVG(t.type)}</div>
       <div class="hist-info">
         <div class="hist-name">${escapeHtml(t.name)}</div>
@@ -618,10 +678,11 @@ function refreshWallets(){
   if(currentData.banks.length === 0){
     bankWrap.innerHTML = '<p class="sub">Belum ada rekening bank.</p>';
   }
-  currentData.banks.forEach((b) => {
+  currentData.banks.forEach((b, i) => {
     const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo" alt="">` : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
     const row = document.createElement('div');
     row.className = 'row-item';
+    row.style.animationDelay = (i*40) + 'ms';
     row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
       <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>
       <button class="rdel" onclick="confirmDeleteWallet('bank','${b.id}')" title="Hapus">
@@ -635,10 +696,11 @@ function refreshWallets(){
   if(currentData.ewallets.length === 0){
     ewWrap.innerHTML = '<p class="sub">Belum ada e-wallet.</p>';
   }
-  currentData.ewallets.forEach((b) => {
+  currentData.ewallets.forEach((b, i) => {
     const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo" alt="">` : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
     const row = document.createElement('div');
     row.className = 'row-item';
+    row.style.animationDelay = (i*40) + 'ms';
     row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
       <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>
       <button class="rdel" onclick="confirmDeleteWallet('ewallet','${b.id}')" title="Hapus">
@@ -686,7 +748,7 @@ function openAddWalletModal(){
       <div class="chip" onclick="openWalletPicker('wallets-ewallet')">E-wallet</div>
     </div>
   `;
-  document.getElementById('wallet-picker-modal').classList.add('active');
+  openModal('wallet-picker-modal');
 }
 
 /* =========================================================
