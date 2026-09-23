@@ -613,14 +613,6 @@ function deleteTx(id){
    WALLETS TAB
    ========================================================= */
 function refreshWallets(){
-  const greetEl = document.getElementById('wallet-greet');
-  const userEl = document.getElementById('wallet-username');
-  if(greetEl && userEl){
-    const hr = new Date().getHours();
-    greetEl.textContent = hr < 11 ? 'Selamat pagi,' : hr < 15 ? 'Selamat siang,' : hr < 18 ? 'Selamat sore,' : 'Selamat malam,';
-    userEl.textContent = currentUser;
-  }
-
   const bankWrap = document.getElementById('wallet-bank-list');
   bankWrap.innerHTML = '';
   if(currentData.banks.length === 0){
@@ -631,7 +623,10 @@ function refreshWallets(){
     const row = document.createElement('div');
     row.className = 'row-item';
     row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
-      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>`;
+      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>
+      <button class="rdel" onclick="confirmDeleteWallet('bank','${b.id}')" title="Hapus">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>`;
     bankWrap.appendChild(row);
   });
 
@@ -645,11 +640,39 @@ function refreshWallets(){
     const row = document.createElement('div');
     row.className = 'row-item';
     row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
-      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>`;
+      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>
+      <button class="rdel" onclick="confirmDeleteWallet('ewallet','${b.id}')" title="Hapus">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>`;
     ewWrap.appendChild(row);
   });
 
   document.getElementById('wallet-cash-display').textContent = fmtRupiah(currentData.balances.cash||0);
+}
+
+/* Hapus bank/e-wallet. Kalau masih ada transaksi yang tercatat lewat
+   sumber ini, transaksi itu tetap disimpan di riwayat (histori tidak
+   dihapus) tapi kehilangan tautan ke walletnya -- source.name tetap
+   tampil apa adanya di riwayat lama, hanya wallet & saldonya yang hilang. */
+function confirmDeleteWallet(kind, id){
+  const list = kind === 'bank' ? currentData.banks : currentData.ewallets;
+  const item = list.find(w => w.id === id);
+  if(!item) return;
+
+  const balances = kind === 'bank' ? currentData.balances.bank : currentData.balances.ewallet;
+  const bal = balances[id] || 0;
+  const balWarn = bal !== 0 ? ` Saldo saat ini ${fmtRupiah(bal)} akan ikut hilang dari total.` : '';
+
+  if(!confirm(`Hapus ${item.name}?${balWarn} Riwayat transaksi lama tetap tersimpan.`)) return;
+
+  const idx = list.findIndex(w => w.id === id);
+  if(idx > -1) list.splice(idx, 1);
+  delete balances[id];
+
+  saveUserData(currentUser, currentData);
+  refreshWallets();
+  refreshHome();
+  showToast(`${item.name} dihapus`);
 }
 
 /* Tombol + di tab Dompet: tanya bank atau e-wallet dulu, lalu buka picker logo */
