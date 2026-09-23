@@ -91,11 +91,19 @@
 
   .stack{ display:flex; flex-direction:column; gap:10px; }
   .row-item{
-    display:flex; align-items:center; justify-content:space-between;
+    display:flex; align-items:center; gap:12px; justify-content:space-between;
     background:var(--white); padding:14px 16px; border-radius:16px; box-shadow:var(--shadow);
   }
-  .row-item .rname{ font-weight:600; font-size:15px; }
+  .row-item .rname{ font-weight:600; font-size:15px; flex:1; }
   .row-item .rdel{ background:none; border:none; padding:6px; color:var(--out); }
+
+  .wlogo{ width:32px; height:32px; border-radius:9px; object-fit:cover; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.12); }
+  .wlogo-fallback{
+    width:32px; height:32px; border-radius:9px; flex-shrink:0; background:var(--in-soft); color:var(--in-deep);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;
+  }
+  .wlogo-sm{ width:22px; height:22px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+  .sicon-logo{ width:26px; height:26px; border-radius:7px; object-fit:cover; }
 
   .add-inline{ display:flex; gap:8px; margin-top:14px; }
   .add-inline input{ flex:1; }
@@ -358,10 +366,7 @@
       <h2 class="title">Rekening bank</h2>
       <p class="sub">Tambahkan nama bank yang kamu pakai. Lewati kalau tidak punya rekening.</p>
       <div class="stack" id="ob-bank-list"></div>
-      <div class="add-inline">
-        <input type="text" id="ob-bank-input" placeholder="cth. BCA, BRI, Jenius">
-        <button onclick="addBankOB()">+</button>
-      </div>
+      <button class="btn btn-outline" style="width:100%;" onclick="openWalletPicker('ob-bank')">+ Tambah bank</button>
     </div>
     <div class="content" style="flex:0; padding-top:0;">
       <button class="btn btn-primary" onclick="goTo('screen-ob-ewallet')">Lanjut</button>
@@ -375,10 +380,7 @@
       <h2 class="title">E-wallet</h2>
       <p class="sub">Tambahkan dompet digital yang kamu pakai. Lewati kalau tidak ada.</p>
       <div class="stack" id="ob-ewallet-list"></div>
-      <div class="add-inline">
-        <input type="text" id="ob-ewallet-input" placeholder="cth. GoPay, OVO, Dana">
-        <button onclick="addEwalletOB()">+</button>
-      </div>
+      <button class="btn btn-outline" style="width:100%;" onclick="openWalletPicker('ob-ewallet')">+ Tambah e-wallet</button>
     </div>
     <div class="content" style="flex:0; padding-top:0;">
       <button class="btn btn-primary" onclick="goTo('screen-ob-balance-bank')">Lanjut</button>
@@ -625,22 +627,12 @@
   </div>
 </div>
 
-<!-- ===================== MODAL: TAMBAH BANK / E-WALLET ===================== -->
-<div class="modal-overlay" id="add-wallet-modal">
+<!-- ===================== MODAL: PILIH BANK / E-WALLET ===================== -->
+<div class="modal-overlay" id="wallet-picker-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <p class="modal-title">Tambah dompet</p>
-    <p class="modal-sub">Pilih jenis, lalu isi namanya.</p>
-
-    <div class="sub-select" id="add-wallet-type-chips">
-      <div class="chip selected" data-type="bank" onclick="setAddWalletType('bank')">Bank</div>
-      <div class="chip" data-type="ewallet" onclick="setAddWalletType('ewallet')">E-wallet</div>
-    </div>
-
-    <input type="text" id="add-wallet-name-input" placeholder="Nama bank" style="width:100%; margin-bottom:14px;">
-
-    <button onclick="submitAddWallet()" style="width:100%; padding:14px; border-radius:16px; border:none; background:var(--ink); color:var(--paper); font-weight:700; font-size:15px;">Simpan</button>
-    <button onclick="closeAddWalletModal()" style="width:100%; padding:14px; border-radius:16px; border:none; background:transparent; color:var(--ink-soft); font-weight:600; font-size:14px; margin-top:6px;">Batal</button>
+    <div id="wallet-picker-body"></div>
+    <button onclick="closeWalletPicker()" style="width:100%; padding:14px; border-radius:16px; border:none; background:transparent; color:var(--ink-soft); font-weight:600; font-size:14px; margin-top:6px;">Batal</button>
   </div>
 </div>
 

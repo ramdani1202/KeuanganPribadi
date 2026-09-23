@@ -21,9 +21,20 @@ const ASSETS = [
   './index.html',
   './app.js',
   './manifest.json',
-  './icons/icon-192.svg',
-  './icons/icon-512.svg',
-  './icons/icon-maskable.svg'
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable.png',
+  './icons/banks/seabank.png',
+  './icons/banks/bca.png',
+  './icons/banks/bri.png',
+  './icons/banks/bni.png',
+  './icons/banks/mandiri.png',
+  './icons/banks/jago.png',
+  './icons/banks/neobank.png',
+  './icons/ewallets/gopay.png',
+  './icons/ewallets/dana.png',
+  './icons/ewallets/ovo.png',
+  './icons/ewallets/shopeepay.png'
 ];
 
 self.addEventListener('install', (event) => {

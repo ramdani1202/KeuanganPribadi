@@ -11,6 +11,25 @@ const LS_USERS = 'cu_users';
 const LS_SESSION = 'cu_session';
 const dataKey = (u) => `cu_data_${u}`;
 
+/* ---------- Katalog logo bank & e-wallet ---------- */
+const BANK_CATALOG = [
+  { key:'seabank',  name:'SeaBank',  logo:'icons/banks/seabank.png' },
+  { key:'bca',      name:'BCA',      logo:'icons/banks/bca.png' },
+  { key:'bri',      name:'BRI',      logo:'icons/banks/bri.png' },
+  { key:'bni',      name:'BNI',      logo:'icons/banks/bni.png' },
+  { key:'mandiri',  name:'Mandiri',  logo:'icons/banks/mandiri.png' },
+  { key:'jago',     name:'Jago',     logo:'icons/banks/jago.png' },
+  { key:'neobank',  name:'Neobank',  logo:'icons/banks/neobank.png' }
+];
+const EWALLET_CATALOG = [
+  { key:'gopay',      name:'GoPay',      logo:'icons/ewallets/gopay.png' },
+  { key:'dana',       name:'DANA',       logo:'icons/ewallets/dana.png' },
+  { key:'ovo',        name:'OVO',        logo:'icons/ewallets/ovo.png' },
+  { key:'shopeepay',  name:'ShopeePay',  logo:'icons/ewallets/shopeepay.png' }
+];
+function catalogFor(kind){ return kind === 'bank' ? BANK_CATALOG : EWALLET_CATALOG; }
+function catalogItem(kind, key){ return catalogFor(kind).find(c => c.key === key); }
+
 let currentUser = null;
 let currentData = null;
 let obSelectedIncomeType = null;
@@ -57,7 +76,7 @@ function getUserData(username){
   try{
     const raw = localStorage.getItem(dataKey(username));
     if(!raw) return null;
-    return JSON.parse(raw);
+    return migrateWalletsIfNeeded(JSON.parse(raw));
   }catch(e){ return null; }
 }
 function saveUserData(username, data){
@@ -66,11 +85,63 @@ function saveUserData(username, data){
 function defaultUserData(){
   return {
     incomeType: null,
+    // banks/ewallets: [{id, key, name, logo}] -- id unik per item ditambahkan (boleh duplikat key, mis. 2x BCA)
     banks: [],
     ewallets: [],
-    balances: { bank:{}, ewallet:{}, cash:0 },
-    transactions: [] // {id, type:'in'|'out', amount, name, source:{type,name}, date(ISO), category?}
+    balances: { bank:{}, ewallet:{}, cash:0 }, // keyed by item.id
+    transactions: [] // {id, type:'in'|'out', amount, name, source:{type,id,name}, date(ISO), category?}
   };
+}
+
+/* Migrasi data lama: banks/ewallets dulu berupa array string nama,
+   dan balances.bank/ewallet keyed by nama. Versi baru pakai object
+   {id,key,name,logo} + balances keyed by id, supaya bisa duplikat
+   (mis. 2 rekening BCA) dan bisa tampilkan logo. */
+function migrateWalletsIfNeeded(data){
+  if(!data) return data;
+  let changed = false;
+
+  const migrateList = (list, balancesObj, kind) => {
+    const newList = [];
+    const newBalances = {};
+    (list||[]).forEach(item => {
+      if(typeof item === 'string'){
+        changed = true;
+        const id = uid();
+        const found = catalogFor(kind).find(c => c.name.toLowerCase() === item.toLowerCase());
+        newList.push({ id, key: found ? found.key : null, name: item, logo: found ? found.logo : null });
+        newBalances[id] = (balancesObj && balancesObj[item]) || 0;
+      } else if(item && item.id){
+        newList.push(item);
+        newBalances[item.id] = (balancesObj && balancesObj[item.id]) || 0;
+      }
+    });
+    return { newList, newBalances };
+  };
+
+  if((data.banks||[]).some(b => typeof b === 'string')){
+    const { newList, newBalances } = migrateList(data.banks, data.balances && data.balances.bank, 'bank');
+    data.banks = newList;
+    data.balances.bank = newBalances;
+  }
+  if((data.ewallets||[]).some(b => typeof b === 'string')){
+    const { newList, newBalances } = migrateList(data.ewallets, data.balances && data.balances.ewallet, 'ewallet');
+    data.ewallets = newList;
+    data.balances.ewallet = newBalances;
+  }
+
+  // Transaksi lama menyimpan source.name sebagai kunci saldo; sinkronkan source.id kalau belum ada
+  if(changed && Array.isArray(data.transactions)){
+    data.transactions.forEach(t => {
+      if(t.source && !t.source.id && t.source.type !== 'cash'){
+        const list = t.source.type === 'bank' ? data.banks : data.ewallets;
+        const match = list.find(w => w.name === t.source.name);
+        if(match) t.source.id = match.id;
+      }
+    });
+  }
+
+  return data;
 }
 
 /* =========================================================
@@ -157,56 +228,88 @@ function selectIncomeType(type, el){
   el.classList.add('selected');
 }
 
+function walletRowHTML(item, i, removeFn){
+  const logoHTML = item.logo
+    ? `<img src="${item.logo}" class="wlogo" alt="">`
+    : `<span class="wlogo wlogo-fallback">${escapeHtml((item.name||'?').charAt(0).toUpperCase())}</span>`;
+  return `<div class="row-item">
+      ${logoHTML}
+      <span class="rname">${escapeHtml(item.name)}</span>
+      <button class="rdel" onclick="${removeFn}(${i})">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>`;
+}
+
 function renderOBBankList(){
   const wrap = document.getElementById('ob-bank-list');
-  wrap.innerHTML = '';
-  currentData.banks.forEach((b, i) => {
-    const row = document.createElement('div');
-    row.className = 'row-item';
-    row.innerHTML = `<span class="rname">${escapeHtml(b)}</span>
-      <button class="rdel" onclick="removeBankOB(${i})">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      </button>`;
-    wrap.appendChild(row);
-  });
-}
-function addBankOB(){
-  const input = document.getElementById('ob-bank-input');
-  const val = input.value.trim();
-  if(!val) return;
-  currentData.banks.push(val);
-  input.value = '';
-  renderOBBankList();
+  wrap.innerHTML = currentData.banks.map((b,i) => walletRowHTML(b, i, 'removeBankOB')).join('');
 }
 function removeBankOB(i){
+  const item = currentData.banks[i];
+  if(item) delete currentData.balances.bank[item.id];
   currentData.banks.splice(i,1);
   renderOBBankList();
 }
 
 function renderOBEwalletList(){
   const wrap = document.getElementById('ob-ewallet-list');
-  wrap.innerHTML = '';
-  currentData.ewallets.forEach((b, i) => {
-    const row = document.createElement('div');
-    row.className = 'row-item';
-    row.innerHTML = `<span class="rname">${escapeHtml(b)}</span>
-      <button class="rdel" onclick="removeEwalletOB(${i})">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      </button>`;
-    wrap.appendChild(row);
-  });
-}
-function addEwalletOB(){
-  const input = document.getElementById('ob-ewallet-input');
-  const val = input.value.trim();
-  if(!val) return;
-  currentData.ewallets.push(val);
-  input.value = '';
-  renderOBEwalletList();
+  wrap.innerHTML = currentData.ewallets.map((b,i) => walletRowHTML(b, i, 'removeEwalletOB')).join('');
 }
 function removeEwalletOB(i){
+  const item = currentData.ewallets[i];
+  if(item) delete currentData.balances.ewallet[item.id];
   currentData.ewallets.splice(i,1);
   renderOBEwalletList();
+}
+
+/* ---------- Pilih logo bank/e-wallet (dipakai di onboarding & tab Dompet) ---------- */
+let pickerContext = null; // 'ob-bank' | 'ob-ewallet' | 'wallets'
+
+function openWalletPicker(context){
+  pickerContext = context;
+  const kind = (context === 'ob-ewallet' || context === 'wallets-ewallet') ? 'ewallet' : 'bank';
+  const title = kind === 'bank' ? 'Pilih bank' : 'Pilih e-wallet';
+  const grid = catalogFor(kind).map(c => `
+    <div class="source-opt" onclick="pickWalletFromCatalog('${kind}','${c.key}')">
+      <img src="${c.logo}" class="sicon-logo" alt="">
+      <span class="sname">${escapeHtml(c.name)}</span>
+    </div>`).join('');
+
+  const body = document.getElementById('wallet-picker-body');
+  body.innerHTML = `
+    <h3 class="modal-title">${title}</h3>
+    <p class="modal-sub">Boleh pilih yang sama lebih dari sekali (mis. 2 rekening berbeda).</p>
+    <div class="source-grid">${grid}</div>
+  `;
+  document.getElementById('wallet-picker-modal').classList.add('active');
+}
+function closeWalletPicker(){
+  document.getElementById('wallet-picker-modal').classList.remove('active');
+}
+
+function pickWalletFromCatalog(kind, key){
+  const cat = catalogItem(kind, key);
+  if(!cat) return;
+  const item = { id: uid(), key: cat.key, name: cat.name, logo: cat.logo };
+
+  if(kind === 'bank'){
+    currentData.banks.push(item);
+    currentData.balances.bank[item.id] = 0;
+  } else {
+    currentData.ewallets.push(item);
+    currentData.balances.ewallet[item.id] = 0;
+  }
+
+  closeWalletPicker();
+
+  if(pickerContext === 'ob-bank') renderOBBankList();
+  else if(pickerContext === 'ob-ewallet') renderOBEwalletList();
+  else if(pickerContext === 'wallets-bank' || pickerContext === 'wallets-ewallet'){
+    saveUserData(currentUser, currentData);
+    refreshWallets();
+    showToast((kind==='bank'?'Bank':'E-wallet') + ' ditambahkan');
+  }
 }
 
 function renderOBBalanceBank(){
@@ -219,10 +322,11 @@ function renderOBBalanceBank(){
   currentData.banks.forEach(b => {
     const field = document.createElement('div');
     field.className = 'field';
-    field.innerHTML = `<label>${escapeHtml(b)}</label>
+    const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo-sm" alt="">` : '';
+    field.innerHTML = `<label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(b.name)}</label>
       <div class="amount-input-wrap" style="margin-bottom:0;">
         <span class="rp">Rp</span>
-        <input type="number" inputmode="numeric" placeholder="0" data-bank="${escapeHtml(b)}" class="ob-bank-balance-input" value="${currentData.balances.bank[b]||''}">
+        <input type="number" inputmode="numeric" placeholder="0" data-id="${b.id}" class="ob-bank-balance-input" value="${currentData.balances.bank[b.id]||''}">
       </div>`;
     wrap.appendChild(field);
   });
@@ -237,10 +341,11 @@ function renderOBBalanceEwallet(){
   currentData.ewallets.forEach(b => {
     const field = document.createElement('div');
     field.className = 'field';
-    field.innerHTML = `<label>${escapeHtml(b)}</label>
+    const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo-sm" alt="">` : '';
+    field.innerHTML = `<label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(b.name)}</label>
       <div class="amount-input-wrap" style="margin-bottom:0;">
         <span class="rp">Rp</span>
-        <input type="number" inputmode="numeric" placeholder="0" data-ewallet="${escapeHtml(b)}" class="ob-ewallet-balance-input" value="${currentData.balances.ewallet[b]||''}">
+        <input type="number" inputmode="numeric" placeholder="0" data-id="${b.id}" class="ob-ewallet-balance-input" value="${currentData.balances.ewallet[b.id]||''}">
       </div>`;
     wrap.appendChild(field);
   });
@@ -248,14 +353,14 @@ function renderOBBalanceEwallet(){
 
 function collectOBBankBalances(){
   document.querySelectorAll('.ob-bank-balance-input').forEach(inp => {
-    const bank = inp.getAttribute('data-bank');
-    currentData.balances.bank[bank] = Number(inp.value) || 0;
+    const id = inp.getAttribute('data-id');
+    currentData.balances.bank[id] = Number(inp.value) || 0;
   });
 }
 function collectOBEwalletBalances(){
   document.querySelectorAll('.ob-ewallet-balance-input').forEach(inp => {
-    const ew = inp.getAttribute('data-ewallet');
-    currentData.balances.ewallet[ew] = Number(inp.value) || 0;
+    const id = inp.getAttribute('data-id');
+    currentData.balances.ewallet[id] = Number(inp.value) || 0;
   });
 }
 
@@ -311,8 +416,8 @@ function switchTab(tab){
 
 function totalBalance(){
   let t = currentData.balances.cash || 0;
-  Object.values(currentData.balances.bank).forEach(v => t += Number(v)||0);
-  Object.values(currentData.balances.ewallet).forEach(v => t += Number(v)||0);
+  currentData.banks.forEach(b => t += Number(currentData.balances.bank[b.id])||0);
+  currentData.ewallets.forEach(b => t += Number(currentData.balances.ewallet[b.id])||0);
   return t;
 }
 
@@ -349,8 +454,8 @@ function openTxModal(type){
 
   // Build source list
   let sources = [];
-  currentData.banks.forEach(b => sources.push({type:'bank', name:b, bal: currentData.balances.bank[b]||0}));
-  currentData.ewallets.forEach(b => sources.push({type:'ewallet', name:b, bal: currentData.balances.ewallet[b]||0}));
+  currentData.banks.forEach(b => sources.push({type:'bank', id:b.id, name:b.name, logo:b.logo, bal: currentData.balances.bank[b.id]||0}));
+  currentData.ewallets.forEach(b => sources.push({type:'ewallet', id:b.id, name:b.name, logo:b.logo, bal: currentData.balances.ewallet[b.id]||0}));
   sources.push({type:'cash', name:'Cash', bal: currentData.balances.cash||0});
 
   const title = type === 'in' ? 'Catat pemasukan' : 'Catat pengeluaran';
@@ -358,8 +463,9 @@ function openTxModal(type){
 
   let sourceGridHTML = '<div class="source-grid" id="tx-source-grid">';
   sources.forEach((s, idx) => {
+    const iconHTML = s.logo ? `<img src="${s.logo}" class="sicon-logo" alt="">` : sourceIconSVG(s.type);
     sourceGridHTML += `<div class="source-opt" data-idx="${idx}" onclick="selectTxSource(${idx})">
-      ${sourceIconSVG(s.type)}
+      ${iconHTML}
       <span class="sname">${escapeHtml(s.name)}</span>
       <span class="samt">${fmtRupiah(s.bal)}</span>
     </div>`;
@@ -399,8 +505,8 @@ function closeTxModal(){
 document.getElementById('tx-modal').addEventListener('click', (e)=>{
   if(e.target.id === 'tx-modal') closeTxModal();
 });
-document.getElementById('add-wallet-modal').addEventListener('click', (e)=>{
-  if(e.target.id === 'add-wallet-modal') closeAddWalletModal();
+document.getElementById('wallet-picker-modal').addEventListener('click', (e)=>{
+  if(e.target.id === 'wallet-picker-modal') closeWalletPicker();
 });
 
 function submitTx(){
@@ -415,9 +521,9 @@ function submitTx(){
   if(txSelectedSource.type === 'cash'){
     currentData.balances.cash += (txType === 'in' ? amount : -amount);
   } else if(txSelectedSource.type === 'bank'){
-    currentData.balances.bank[txSelectedSource.name] += (txType === 'in' ? amount : -amount);
+    currentData.balances.bank[txSelectedSource.id] += (txType === 'in' ? amount : -amount);
   } else if(txSelectedSource.type === 'ewallet'){
-    currentData.balances.ewallet[txSelectedSource.name] += (txType === 'in' ? amount : -amount);
+    currentData.balances.ewallet[txSelectedSource.id] += (txType === 'in' ? amount : -amount);
   }
 
   currentData.transactions.unshift({
@@ -425,7 +531,7 @@ function submitTx(){
     type: txType,
     amount: amount,
     name: name,
-    source: { type: txSelectedSource.type, name: txSelectedSource.name },
+    source: { type: txSelectedSource.type, id: txSelectedSource.id, name: txSelectedSource.name },
     date: new Date().toISOString()
   });
 
@@ -493,8 +599,8 @@ function deleteTx(id){
   // revert balance
   const sign = t.type === 'in' ? -1 : 1;
   if(t.source.type === 'cash'){ currentData.balances.cash += sign * t.amount; }
-  else if(t.source.type === 'bank'){ currentData.balances.bank[t.source.name] = (currentData.balances.bank[t.source.name]||0) + sign*t.amount; }
-  else if(t.source.type === 'ewallet'){ currentData.balances.ewallet[t.source.name] = (currentData.balances.ewallet[t.source.name]||0) + sign*t.amount; }
+  else if(t.source.type === 'bank' && t.source.id){ currentData.balances.bank[t.source.id] = (currentData.balances.bank[t.source.id]||0) + sign*t.amount; }
+  else if(t.source.type === 'ewallet' && t.source.id){ currentData.balances.ewallet[t.source.id] = (currentData.balances.ewallet[t.source.id]||0) + sign*t.amount; }
 
   currentData.transactions.splice(idx,1);
   saveUserData(currentUser, currentData);
@@ -520,11 +626,12 @@ function refreshWallets(){
   if(currentData.banks.length === 0){
     bankWrap.innerHTML = '<p class="sub">Belum ada rekening bank.</p>';
   }
-  currentData.banks.forEach((b,i) => {
+  currentData.banks.forEach((b) => {
+    const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo" alt="">` : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
     const row = document.createElement('div');
     row.className = 'row-item';
-    row.innerHTML = `<span class="rname">${escapeHtml(b)}</span>
-      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b]||0)}</span>`;
+    row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
+      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>`;
     bankWrap.appendChild(row);
   });
 
@@ -533,54 +640,30 @@ function refreshWallets(){
   if(currentData.ewallets.length === 0){
     ewWrap.innerHTML = '<p class="sub">Belum ada e-wallet.</p>';
   }
-  currentData.ewallets.forEach((b,i) => {
+  currentData.ewallets.forEach((b) => {
+    const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo" alt="">` : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
     const row = document.createElement('div');
     row.className = 'row-item';
-    row.innerHTML = `<span class="rname">${escapeHtml(b)}</span>
-      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b]||0)}</span>`;
+    row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
+      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>`;
     ewWrap.appendChild(row);
   });
 
   document.getElementById('wallet-cash-display').textContent = fmtRupiah(currentData.balances.cash||0);
 }
 
-let addWalletType = 'bank';
-
+/* Tombol + di tab Dompet: tanya bank atau e-wallet dulu, lalu buka picker logo */
 function openAddWalletModal(){
-  addWalletType = 'bank';
-  document.querySelectorAll('#add-wallet-type-chips .chip').forEach(c => c.classList.remove('selected'));
-  document.querySelector('#add-wallet-type-chips .chip[data-type="bank"]').classList.add('selected');
-  document.getElementById('add-wallet-name-input').value = '';
-  document.getElementById('add-wallet-name-input').placeholder = 'Nama bank';
-  document.getElementById('add-wallet-modal').classList.add('active');
-  setTimeout(() => document.getElementById('add-wallet-name-input').focus(), 150);
-}
-function closeAddWalletModal(){
-  document.getElementById('add-wallet-modal').classList.remove('active');
-}
-function setAddWalletType(type){
-  addWalletType = type;
-  document.querySelectorAll('#add-wallet-type-chips .chip').forEach(c => c.classList.remove('selected'));
-  document.querySelector(`#add-wallet-type-chips .chip[data-type="${type}"]`).classList.add('selected');
-  document.getElementById('add-wallet-name-input').placeholder = type === 'bank' ? 'Nama bank' : 'Nama e-wallet';
-}
-function submitAddWallet(){
-  const input = document.getElementById('add-wallet-name-input');
-  const val = input.value.trim();
-  if(!val){ showToast('Nama tidak boleh kosong'); return; }
-
-  if(addWalletType === 'bank'){
-    currentData.banks.push(val);
-    currentData.balances.bank[val] = 0;
-    showToast('Bank ditambahkan');
-  } else {
-    currentData.ewallets.push(val);
-    currentData.balances.ewallet[val] = 0;
-    showToast('E-wallet ditambahkan');
-  }
-  saveUserData(currentUser, currentData);
-  refreshWallets();
-  closeAddWalletModal();
+  const body = document.getElementById('wallet-picker-body');
+  body.innerHTML = `
+    <h3 class="modal-title">Tambah dompet</h3>
+    <p class="modal-sub">Mau tambah apa?</p>
+    <div class="sub-select" style="margin-bottom:4px;">
+      <div class="chip" onclick="openWalletPicker('wallets-bank')">Bank</div>
+      <div class="chip" onclick="openWalletPicker('wallets-ewallet')">E-wallet</div>
+    </div>
+  `;
+  document.getElementById('wallet-picker-modal').classList.add('active');
 }
 
 /* =========================================================
