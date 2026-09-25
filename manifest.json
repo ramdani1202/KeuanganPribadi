@@ -1,6 +1,6 @@
 {
-  "name": "KeuanganPribadi",
-  "short_name": "KeuanganPribadi",
+  "name": "MoneyPri",
+  "short_name": "MoneyPri",
   "description": "Pembukuan pribadi sederhana — catat pemasukan, pengeluaran, bank, e-wallet, dan cash.",
   "start_url": "./index.html",
   "scope": "./",

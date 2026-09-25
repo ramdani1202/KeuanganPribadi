@@ -771,7 +771,7 @@ function printReceipt(){
   let y = 10;
   doc.setFont('courier', 'bold');
   doc.setFontSize(12);
-  doc.text('KEUANGANPRIBADI', 40, y, { align:'center' }); y += 5;
+  doc.text('MONEYPRI', 40, y, { align:'center' }); y += 5;
   doc.setFontSize(8);
   doc.setFont('courier','normal');
   doc.text(`Akun: ${currentUser}`, 40, y, { align:'center' }); y += 4;
@@ -886,7 +886,7 @@ function exportBackup(){
   const userRecord = users[currentUser];
 
   const backup = {
-    app: 'KeuanganPribadi',
+    app: 'MoneyPri',
     backupVersion: 1,
     exportedAt: new Date().toISOString(),
     username: currentUser,
@@ -899,7 +899,7 @@ function exportBackup(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `backup-keuanganpribadi-${currentUser}-${todayKey()}.json`;
+  a.download = `backup-moneypri-${currentUser}-${todayKey()}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
