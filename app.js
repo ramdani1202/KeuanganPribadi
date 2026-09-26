@@ -980,8 +980,23 @@ function handleImportFile(event){
       } else {
         enterApp();
       }
+      hideSplash();
       return;
     }
   }
   goTo('screen-login');
+  hideSplash();
 })();
+
+/* Splash tampil sebentar biar transisi masuk kerasa smooth, bukan "plek" langsung
+   ke layar login/home. Jeda minimum supaya animasi logo sempat kelihatan walau
+   data user kecil & proses init-nya nyaris instan. */
+function hideSplash(){
+  const splash = document.getElementById('splash-screen');
+  if(!splash) return;
+  const MIN_SPLASH_MS = 700;
+  setTimeout(() => {
+    splash.classList.add('splash-hide');
+    setTimeout(() => { splash.style.display = 'none'; }, 500);
+  }, MIN_SPLASH_MS);
+}
