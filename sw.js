@@ -36,6 +36,7 @@ const ASSETS = [
   './icons/banks/mandiri.png',
   './icons/banks/jago.png',
   './icons/banks/neobank.png',
+  './icons/banks/krombank.png',
   './icons/ewallets/gopay.png',
   './icons/ewallets/dana.png',
   './icons/ewallets/ovo.png',

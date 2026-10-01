@@ -19,7 +19,8 @@ const BANK_CATALOG = [
   { key:'bni',      name:'BNI',      logo:'icons/banks/bni.png' },
   { key:'mandiri',  name:'Mandiri',  logo:'icons/banks/mandiri.png' },
   { key:'jago',     name:'Jago',     logo:'icons/banks/jago.png' },
-  { key:'neobank',  name:'Neobank',  logo:'icons/banks/neobank.png' }
+  { key:'neobank',  name:'Neobank',  logo:'icons/banks/neobank.png' },
+  { key:'krombank', name:'KromBank', logo:'icons/banks/krombank.png' }
 ];
 const EWALLET_CATALOG = [
   { key:'gopay',      name:'GoPay',      logo:'icons/ewallets/gopay.png' },
