@@ -416,16 +416,16 @@ function openWalletPicker(context){
   const kind = (context === 'ob-ewallet' || context === 'wallets-ewallet') ? 'ewallet' : 'bank';
   const title = kind === 'bank' ? 'Pilih bank' : 'Pilih e-wallet';
   const grid = catalogFor(kind).map((c,idx) => `
-    <div class="source-opt" style="animation-delay:${idx*30}ms" onclick="pickWalletFromCatalog('${kind}','${c.key}')">
-      <img src="${c.logo}" class="sicon-logo" alt="">
-      <span class="sname">${escapeHtml(c.name)}</span>
+    <div class="pay-tile t${idx % 5}" style="animation-delay:${idx*35}ms" onclick="pickWalletFromCatalog('${kind}','${c.key}')">
+      <img src="${escapeHtml(c.logo)}" class="sicon-logo" alt="">
+      <span class="pname">${escapeHtml(c.name)}</span>
     </div>`).join('');
 
   const body = document.getElementById('wallet-picker-body');
   body.innerHTML = `
     <h3 class="modal-title">${title}</h3>
     <p class="modal-sub">Boleh pilih yang sama lebih dari sekali (mis. 2 rekening berbeda).</p>
-    <div class="source-grid">${grid}</div>
+    <div class="pay-grid logos">${grid}</div>
   `;
   openModal('wallet-picker-modal');
 }
@@ -977,15 +977,22 @@ function confirmDeleteWallet(kind, id){
 
 /* Tombol + di tab Dompet: tanya bank atau e-wallet dulu, lalu buka picker logo */
 function openAddWalletModal(){
-  const body = document.getElementById('wallet-picker-body');
-  body.innerHTML = `
+  const names = (kind) => catalogFor(kind).slice(0,3).map(c => c.name).join(', ') + ', dll.';
+  document.getElementById('wallet-picker-body').innerHTML = `
     <h3 class="modal-title">Tambah dompet</h3>
     <p class="modal-sub">Mau tambah apa?</p>
-    <div class="sub-select" style="margin-bottom:4px;">
-      <div class="chip" onclick="openWalletPicker('wallets-bank')">Bank</div>
-      <div class="chip" onclick="openWalletPicker('wallets-ewallet')">E-wallet</div>
-    </div>
-  `;
+    <div class="pay-grid two" style="margin-bottom:12px;">
+      <div class="pay-tile big t0" style="animation-delay:0ms" onclick="openWalletPicker('wallets-bank')">
+        ${sourceIconSVG('bank')}
+        <span class="pname">Bank</span>
+        <span class="pdesc">${escapeHtml(names('bank'))}</span>
+      </div>
+      <div class="pay-tile big t1" style="animation-delay:60ms" onclick="openWalletPicker('wallets-ewallet')">
+        ${sourceIconSVG('ewallet')}
+        <span class="pname">E-wallet</span>
+        <span class="pdesc">${escapeHtml(names('ewallet'))}</span>
+      </div>
+    </div>`;
   openModal('wallet-picker-modal');
 }
 
@@ -1004,14 +1011,21 @@ function refreshSettings(){
 }
 
 function openIncomeTypeModal(){
-  const opts = [['gaji','Gaji bulanan / harian'],['usaha','Usaha / jualan sendiri'],['keduanya','Keduanya']];
+  const ico = {
+    gaji:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.9"/><path d="M9 7V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5V7M3 13h18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+    usaha:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    keduanya:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.9"/><path d="M12 7v10M8.5 10h7M8.5 14h7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>'
+  };
+  const opts = [['gaji','Gaji','Bulanan atau harian'],['usaha','Usaha','Jualan atau bisnis sendiri'],['keduanya','Gaji & usaha','Dua-duanya']];
   document.getElementById('wallet-picker-body').innerHTML = `
     <h3 class="modal-title">Jenis penghasilan</h3>
-    <p class="modal-sub">Pilih yang paling sesuai. Bisa diganti lagi kapan saja.</p>
-    <div class="stack">` + opts.map(([k,label]) => `
-      <div class="source-opt${currentData.incomeType===k?' selected':''}" style="width:100%; flex-direction:row; justify-content:flex-start; padding:16px;" onclick="setIncomeType('${k}')">
-        <span class="sname">${label}</span>
-      </div>`).join('') + `</div>`;
+    <p class="modal-sub">Pilih yang paling sesuai. Bisa diganti lagi kapan saja.</p>` +
+    opts.map(([k,label,desc],i) => `
+    <button class="menu-item${currentData.incomeType===k?' selected':''}" style="animation-delay:${i*45}ms" onclick="setIncomeType('${k}')">
+      <span class="mi-ico">${ico[k]}</span>
+      <span><span class="mi-title">${label}</span><span class="mi-sub">${desc}</span></span>
+      <span class="mi-check">${CHECK_SVG}</span>
+    </button>`).join('');
   openModal('wallet-picker-modal');
 }
 function setIncomeType(type){
