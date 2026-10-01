@@ -823,55 +823,79 @@ function deleteTx(id){
 /* =========================================================
    WALLETS TAB
    ========================================================= */
+const MORE_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>';
+
+function walletListRow(kind, b, i){
+  const bal = (kind === 'bank' ? currentData.balances.bank : currentData.balances.ewallet)[b.id] || 0;
+  const logoHTML = b.logo
+    ? `<img src="${escapeHtml(b.logo)}" class="wlogo" alt="">`
+    : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
+  const row = document.createElement('div');
+  row.className = 'row-item';
+  row.style.animationDelay = (i*40) + 'ms';
+  row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
+    <span class="rbal">${fmtRupiah(bal)}</span>
+    <button class="rmore" aria-label="Menu ${escapeHtml(b.name)}" title="Ubah saldo / hapus">${MORE_SVG}</button>`;
+  row.querySelector('.rmore').onclick = () => openWalletMenu(kind, b.id);
+  return row;
+}
+
 function refreshWallets(){
   const bankWrap = document.getElementById('wallet-bank-list');
   bankWrap.innerHTML = '';
   if(currentData.banks.length === 0){
     bankWrap.innerHTML = '<p class="sub">Belum ada rekening bank.</p>';
   }
-  currentData.banks.forEach((b, i) => {
-    const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo" alt="">` : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
-    const row = document.createElement('div');
-    row.className = 'row-item';
-    row.style.animationDelay = (i*40) + 'ms';
-    row.style.cursor = 'pointer';
-    row.onclick = () => openBalanceModal('bank', b.id);
-    row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
-      <svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" style=\"color:var(--ink-soft); margin-right:6px; flex-shrink:0;\"><path d=\"M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>
-      <button class="rdel" onclick="event.stopPropagation(); confirmDeleteWallet('bank','${b.id}')" title="Hapus">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>`;
-    bankWrap.appendChild(row);
-  });
+  currentData.banks.forEach((b, i) => bankWrap.appendChild(walletListRow('bank', b, i)));
 
   const ewWrap = document.getElementById('wallet-ewallet-list');
   ewWrap.innerHTML = '';
   if(currentData.ewallets.length === 0){
     ewWrap.innerHTML = '<p class="sub">Belum ada e-wallet.</p>';
   }
-  currentData.ewallets.forEach((b, i) => {
-    const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo" alt="">` : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
-    const row = document.createElement('div');
-    row.className = 'row-item';
-    row.style.animationDelay = (i*40) + 'ms';
-    row.style.cursor = 'pointer';
-    row.onclick = () => openBalanceModal('ewallet', b.id);
-    row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
-      <svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" style=\"color:var(--ink-soft); margin-right:6px; flex-shrink:0;\"><path d=\"M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>
-      <button class="rdel" onclick="event.stopPropagation(); confirmDeleteWallet('ewallet','${b.id}')" title="Hapus">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>`;
-    ewWrap.appendChild(row);
-  });
+  currentData.ewallets.forEach((b, i) => ewWrap.appendChild(walletListRow('ewallet', b, i)));
 
-  const cashEl = document.getElementById('wallet-cash-display');
-  cashEl.textContent = fmtRupiah(currentData.balances.cash||0);
-  const cashRow = cashEl.parentElement;
-  cashRow.style.cursor = 'pointer';
-  cashRow.onclick = () => openBalanceModal('cash');
-  if(!cashRow.querySelector('.edit-hint')){
-    cashEl.insertAdjacentHTML('beforebegin', `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:var(--ink-soft); margin-right:6px; flex-shrink:0;"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`.replace('<svg','<svg class="edit-hint"'));
-  }
+  document.getElementById('wallet-cash-display').textContent = fmtRupiah(currentData.balances.cash||0);
+}
+
+/* Satu tombol ⋮ per dompet -> sheet berisi "Ubah saldo" dan "Hapus" */
+function openWalletMenu(kind, id){
+  const list = kind === 'bank' ? currentData.banks : currentData.ewallets;
+  const item = list.find(w => w.id === id);
+  if(!item) return;
+  const bal = (kind === 'bank' ? currentData.balances.bank : currentData.balances.ewallet)[id] || 0;
+  window._menuTarget = { kind, id };
+
+  const logoHTML = item.logo
+    ? `<img src="${escapeHtml(item.logo)}" class="wlogo" alt="">`
+    : `<span class="wlogo wlogo-fallback">${escapeHtml((item.name||'?').charAt(0).toUpperCase())}</span>`;
+  const pencil = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const trash = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const label = kind === 'bank' ? 'bank' : 'e-wallet';
+
+  document.getElementById('wallet-picker-body').innerHTML = `
+    <div class="menu-head">
+      ${logoHTML}
+      <div><h3 class="modal-title">${escapeHtml(item.name)}</h3><p class="modal-sub">${fmtRupiah(bal)}</p></div>
+    </div>
+    <button class="menu-item" style="animation-delay:40ms" onclick="walletMenuEdit()">
+      <span class="mi-ico">${pencil}</span>
+      <span><span class="mi-title">Ubah saldo</span><span class="mi-sub">Isi atau koreksi saldo ${label} ini</span></span>
+    </button>
+    <button class="menu-item danger" style="animation-delay:90ms" onclick="walletMenuDelete()">
+      <span class="mi-ico">${trash}</span>
+      <span><span class="mi-title">Hapus ${label}</span><span class="mi-sub">Riwayat lama tetap tersimpan</span></span>
+    </button>`;
+  openModal('wallet-picker-modal');
+}
+function walletMenuEdit(){
+  const t = window._menuTarget; if(!t) return;
+  openBalanceModal(t.kind, t.id);
+}
+function walletMenuDelete(){
+  const t = window._menuTarget; if(!t) return;
+  closeWalletPicker();
+  confirmDeleteWallet(t.kind, t.id);
 }
 
 /* ---------- Ubah / isi saldo (bank, e-wallet, cash) ---------- */
