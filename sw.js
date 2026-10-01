@@ -16,6 +16,11 @@
 
 const CACHE_NAME = 'moneypri-offline-cache';
 
+// Library PDF dari CDN: disimpan ke cache saat install supaya cetak struk
+// tetap jalan offline. Responsnya "opaque" (lintas domain), tapi tetap bisa
+// disajikan dari cache untuk tag <script>.
+const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+
 const ASSETS = [
   './',
   './index.html',
@@ -39,7 +44,14 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(ASSETS).then(() =>
+        // kalau CDN gagal dijangkau, install tetap lanjut
+        fetch(new Request(JSPDF_URL, { mode: 'no-cors' }))
+          .then((resp) => cache.put(JSPDF_URL, resp))
+          .catch(() => {})
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -62,6 +74,23 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // jsPDF: cache-first, kalau belum ada ambil dari jaringan lalu simpan
+  if (event.request.url === JSPDF_URL) {
+    event.respondWith(
+      caches.match(JSPDF_URL).then((cached) =>
+        cached || fetch(event.request).then((resp) => {
+          if (resp && (resp.ok || resp.type === 'opaque')) {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(JSPDF_URL, clone));
+          }
+          return resp;
+        })
+      )
+    );
+    return;
+  }
+
   const isCoreFile =
     event.request.mode === 'navigate' ||
     url.pathname.endsWith('/app.js') ||
@@ -75,12 +104,19 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' })
         .then((resp) => {
-          const clone = resp.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          // hanya simpan respons sukses (jangan cache 404/500)
+          if (resp && resp.ok) {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
           return resp;
         })
         .catch(() =>
-          caches.match(event.request).then((r) => r || caches.match('./index.html'))
+          caches.match(event.request).then((r) =>
+            // index.html hanya jadi cadangan untuk navigasi halaman,
+            // bukan untuk app.js / manifest.json
+            r || (event.request.mode === 'navigate' ? caches.match('./index.html') : Response.error())
+          )
         )
     );
     return;

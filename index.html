@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0D9488">
 <meta name="description" content="MoneyPri — pembukuan pribadi sederhana">
 <title>MoneyPri</title>
@@ -299,13 +299,6 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
   @media (prefers-reduced-motion: reduce){ .toast{ transition:opacity 0.15s ease !important; transform:translateX(-50%) !important; } }
 
-  .print-area{ display:none; }
-  @media print{
-    body *{ visibility:hidden; }
-    .print-area, .print-area *{ visibility:visible; }
-    .print-area{ display:block; position:absolute; left:0; top:0; width:100%; }
-  }
-
   .settings-list{ display:flex; flex-direction:column; gap:2px; }
   .settings-row{
     display:flex; align-items:center; justify-content:space-between; padding:16px 4px;
@@ -322,13 +315,6 @@
   .update-btn.spinning svg{ animation:spin 0.9s linear infinite; }
   .update-btn.has-update{ color:var(--accent); }
   @keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
-
-  .update-toast{
-    position:fixed; top:calc(14px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%) translateY(-140%);
-    background:linear-gradient(135deg, #0F766E 0%, #0B2B29 100%); color:#FFFFFF; padding:11px 18px; border-radius:14px; font-size:13px; font-weight:700;
-    display:flex; align-items:center; gap:8px; transition:transform 0.3s ease; z-index:200; max-width:88%;
-  }
-  .update-toast.show{ transform:translateX(-50%) translateY(0); }
 
   ::selection{ background:var(--accent); }
 </style>
@@ -430,6 +416,7 @@
   <!-- ===================== ONBOARDING: BANKS ===================== -->
   <section class="screen" id="screen-ob-banks">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span></span><span></span><span></span></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-income')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">Rekening bank</h2>
       <p class="sub">Tambahkan nama bank yang kamu pakai. Lewati kalau tidak punya rekening.</p>
@@ -444,6 +431,7 @@
   <!-- ===================== ONBOARDING: EWALLET ===================== -->
   <section class="screen" id="screen-ob-ewallet">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span></span><span></span></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-banks')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">E-wallet</h2>
       <p class="sub">Tambahkan dompet digital yang kamu pakai. Lewati kalau tidak ada.</p>
@@ -458,6 +446,7 @@
   <!-- ===================== ONBOARDING: BANK BALANCE ===================== -->
   <section class="screen" id="screen-ob-balance-bank">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-ewallet')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">Saldo awal bank</h2>
       <p class="sub">Masukkan saldo saat ini di tiap rekening.</p>
@@ -471,6 +460,7 @@
   <!-- ===================== ONBOARDING: EWALLET BALANCE ===================== -->
   <section class="screen" id="screen-ob-balance-ewallet">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-bank')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">Saldo awal e-wallet</h2>
       <p class="sub">Masukkan saldo saat ini di tiap dompet digital.</p>
@@ -483,6 +473,7 @@
 
   <!-- ===================== ONBOARDING: CASH ===================== -->
   <section class="screen" id="screen-ob-cash">
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-ewallet')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content center-content">
       <h2 class="title">Uang tunai di tangan</h2>
       <p class="sub">Berapa uang cash yang kamu pegang sekarang?</p>
@@ -701,11 +692,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<div class="update-toast" id="update-toast">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 0115.4-6.4M21 12a9 9 0 01-15.4 6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 3v5h-5M7 21v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  <span id="update-toast-text">Memperbarui aplikasi…</span>
-</div>
-<div class="print-area" id="print-area"></div>
 
 <!-- jsPDF for receipt printing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

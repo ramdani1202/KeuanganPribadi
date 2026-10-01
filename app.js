@@ -46,12 +46,56 @@ function simpleHash(str){
   }
   return hash.toString(36);
 }
+/* Sandi: PBKDF2-SHA256 + salt acak (butuh https/localhost). Akun lama yang
+   masih memakai simpleHash otomatis di-upgrade saat login berikutnya. */
+const PBKDF2_ITER = 100000;
+function hasSubtle(){ return !!(window.crypto && window.crypto.subtle && window.TextEncoder); }
+function bytesToB64(buf){
+  let bin = ''; const b = new Uint8Array(buf);
+  for(let i=0;i<b.length;i++) bin += String.fromCharCode(b[i]);
+  return btoa(bin);
+}
+function b64ToBytes(str){
+  const bin = atob(str); const out = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function pbkdf2B64(pass, saltB64, iter){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt:b64ToBytes(saltB64), iterations:iter, hash:'SHA-256' }, key, 256);
+  return bytesToB64(bits);
+}
+async function makePassRecord(pass){
+  if(!hasSubtle()) return { passHash: simpleHash(pass) };
+  const salt = bytesToB64(crypto.getRandomValues(new Uint8Array(16)));
+  return { algo:'pbkdf2', salt, iter:PBKDF2_ITER, passHash: await pbkdf2B64(pass, salt, PBKDF2_ITER) };
+}
+// -> { ok:boolean, upgraded: record|null }
+async function verifyPass(rec, pass){
+  if(rec.algo === 'pbkdf2'){
+    if(!hasSubtle()) return { ok:false, upgraded:null, unsupported:true };
+    const h = await pbkdf2B64(pass, rec.salt, rec.iter);
+    return { ok: h === rec.passHash, upgraded:null };
+  }
+  if(rec.passHash !== simpleHash(pass)) return { ok:false, upgraded:null };
+  let upgraded = null;
+  if(hasSubtle()){
+    const fresh = await makePassRecord(pass);
+    upgraded = Object.assign({}, rec, fresh);
+  }
+  return { ok:true, upgraded };
+}
+
 function fmtRupiah(n){
   n = Math.round(Number(n)||0);
   return 'Rp' + n.toLocaleString('id-ID');
 }
 function todayKey(d = new Date()){
-  return d.toISOString().slice(0,10);
+  // Tanggal LOKAL (WIB dst.), bukan UTC, supaya "hari ini" ganti tepat tengah malam
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
 }
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -194,19 +238,29 @@ function migrateWalletsIfNeeded(data){
 /* =========================================================
    AUTH
    ========================================================= */
-function handleRegister(){
+let authBusy = false;
+const BAD_NAMES = ['__proto__','constructor','prototype'];
+async function handleRegister(){
+  if(authBusy) return;
   const username = document.getElementById('reg-username').value.trim();
   const p1 = document.getElementById('reg-password').value;
   const p2 = document.getElementById('reg-password2').value;
 
   if(!username){ showToast('Nama akun tidak boleh kosong'); return; }
+  if(username.length > 30 || BAD_NAMES.includes(username)){ showToast('Nama akun tidak valid'); return; }
   if(p1.length < 4){ showToast('Sandi minimal 4 karakter'); return; }
   if(p1 !== p2){ showToast('Sandi tidak cocok'); return; }
 
   const users = getUsers();
   if(users[username]){ showToast('Nama akun sudah dipakai, pilih nama lain'); return; }
 
-  users[username] = { passHash: simpleHash(p1), createdAt: new Date().toISOString() };
+  authBusy = true;
+  let passRec;
+  try{ passRec = await makePassRecord(p1); }
+  catch(e){ authBusy = false; showToast('Gagal membuat akun, coba lagi'); return; }
+  authBusy = false;
+
+  users[username] = Object.assign({}, passRec, { createdAt: new Date().toISOString() });
   saveUsers(users);
   saveUserData(username, defaultUserData());
 
@@ -223,7 +277,8 @@ function handleRegister(){
   goTo('screen-ob-income');
 }
 
-function handleLogin(){
+async function handleLogin(){
+  if(authBusy) return;
   const username = document.getElementById('login-username').value.trim();
   const pass = document.getElementById('login-password').value;
 
@@ -232,7 +287,16 @@ function handleLogin(){
   const users = getUsers();
   const rec = users[username];
   if(!rec){ showToast('Akun tidak ditemukan'); return; }
-  if(rec.passHash !== simpleHash(pass)){ showToast('Sandi salah'); return; }
+  if(BAD_NAMES.includes(username) || !Object.prototype.hasOwnProperty.call(users, username)){ showToast('Akun tidak ditemukan'); return; }
+
+  authBusy = true;
+  let res;
+  try{ res = await verifyPass(rec, pass); }
+  catch(e){ authBusy = false; showToast('Gagal memeriksa sandi, coba lagi'); return; }
+  authBusy = false;
+  if(res.unsupported){ showToast('Buka lewat https agar sandi bisa diperiksa'); return; }
+  if(!res.ok){ showToast('Sandi salah'); return; }
+  if(res.upgraded){ users[username] = res.upgraded; saveUsers(users); }
 
   currentUser = username;
   currentData = getUserData(username) || defaultUserData();
@@ -348,15 +412,19 @@ function pickWalletFromCatalog(kind, key){
     currentData.balances.ewallet[item.id] = 0;
   }
 
-  closeWalletPicker();
-
-  if(pickerContext === 'ob-bank') renderOBBankList();
-  else if(pickerContext === 'ob-ewallet') renderOBEwalletList();
-  else if(pickerContext === 'wallets-bank' || pickerContext === 'wallets-ewallet'){
+  if(pickerContext === 'wallets-bank' || pickerContext === 'wallets-ewallet'){
+    // Dompet sudah tersimpan (saldo 0). Modal tetap terbuka dan langsung
+    // berubah jadi form isi saldo awal; kalau di-Batal, saldo tetap 0.
     saveUserData(currentUser, currentData);
     refreshWallets();
-    showToast((kind==='bank'?'Bank':'E-wallet') + ' ditambahkan');
+    refreshHome();
+    openBalanceModal(kind, item.id, true);
+    return;
   }
+
+  closeWalletPicker();
+  if(pickerContext === 'ob-bank') renderOBBankList();
+  else if(pickerContext === 'ob-ewallet') renderOBEwalletList();
 }
 
 function renderOBBalanceBank(){
@@ -401,12 +469,14 @@ function renderOBBalanceEwallet(){
 function collectOBBankBalances(){
   document.querySelectorAll('.ob-bank-balance-input').forEach(inp => {
     const id = inp.getAttribute('data-id');
+    if(!currentData.banks.some(b => b.id === id)) return;
     currentData.balances.bank[id] = Number(inp.value) || 0;
   });
 }
 function collectOBEwalletBalances(){
   document.querySelectorAll('.ob-ewallet-balance-input').forEach(inp => {
     const id = inp.getAttribute('data-id');
+    if(!currentData.ewallets.some(b => b.id === id)) return;
     currentData.balances.ewallet[id] = Number(inp.value) || 0;
   });
 }
@@ -423,12 +493,19 @@ function finishOnboarding(){
 
 /* Hook navigation transitions to prep data for next onboarding screen */
 const _origGoTo = goTo;
+let _curScreen = null;
 goTo = function(screenId){
+  // Simpan angka yang sudah diketik sebelum pindah (termasuk saat tombol Kembali)
+  if(currentData){
+    if(_curScreen === 'screen-ob-balance-bank') collectOBBankBalances();
+    if(_curScreen === 'screen-ob-balance-ewallet') collectOBEwalletBalances();
+  }
+  _curScreen = screenId;
   _origGoTo(screenId);
   if(screenId === 'screen-ob-banks') renderOBBankList();
   if(screenId === 'screen-ob-ewallet') renderOBEwalletList();
   if(screenId === 'screen-ob-balance-bank'){ renderOBBalanceBank(); }
-  if(screenId === 'screen-ob-balance-ewallet'){ collectOBBankBalances(); renderOBBalanceEwallet(); }
+  if(screenId === 'screen-ob-balance-ewallet'){ renderOBBalanceEwallet(); }
 };
 
 function escapeHtml(str){
@@ -450,7 +527,6 @@ function switchTab(tab){
   const map = { home:'screen-home', history:'screen-history', wallets:'screen-wallets', settings:'screen-settings' };
   goTo(map[tab]);
   // set active state on the matching tab in the now-active screen
-  document.querySelectorAll(`#${map[tab]} .tab-btn`).forEach((b,i)=>{});
   const btns = document.querySelectorAll(`#${map[tab]} .tabbar .tab-btn`);
   const order = ['home','history','wallets','settings'];
   btns.forEach((b, i) => { if(order[i] === tab) b.classList.add('active'); });
@@ -470,7 +546,7 @@ function totalBalance(){
 
 function todayTx(){
   const tk = todayKey();
-  return currentData.transactions.filter(t => t.date.slice(0,10) === tk);
+  return currentData.transactions.filter(t => todayKey(new Date(t.date)) === tk);
 }
 
 /* Update teks angka dengan animasi "pop" -- cuma jalan kalau nilainya
@@ -568,6 +644,19 @@ document.getElementById('wallet-picker-modal').addEventListener('click', (e)=>{
   if(e.target.id === 'wallet-picker-modal') closeWalletPicker();
 });
 
+function sourceBalance(src){
+  if(src.type === 'cash') return Number(currentData.balances.cash) || 0;
+  const m = src.type === 'bank' ? currentData.balances.bank : currentData.balances.ewallet;
+  return Number(m[src.id]) || 0;
+}
+function adjustBalance(src, delta){
+  if(src.type === 'cash'){ currentData.balances.cash = (Number(currentData.balances.cash)||0) + delta; return; }
+  const list = src.type === 'bank' ? currentData.banks : currentData.ewallets;
+  if(!src.id || !list.some(w => w.id === src.id)) return; // dompet sudah dihapus
+  const m = src.type === 'bank' ? currentData.balances.bank : currentData.balances.ewallet;
+  m[src.id] = (Number(m[src.id])||0) + delta;
+}
+
 function submitTx(){
   const name = document.getElementById('tx-name').value.trim();
   const amount = Number(document.getElementById('tx-amount').value);
@@ -576,14 +665,12 @@ function submitTx(){
   if(!name){ showToast('Isi nama transaksi'); return; }
   if(!amount || amount <= 0){ showToast('Isi nominal yang benar'); return; }
 
-  // Update balance
-  if(txSelectedSource.type === 'cash'){
-    currentData.balances.cash += (txType === 'in' ? amount : -amount);
-  } else if(txSelectedSource.type === 'bank'){
-    currentData.balances.bank[txSelectedSource.id] += (txType === 'in' ? amount : -amount);
-  } else if(txSelectedSource.type === 'ewallet'){
-    currentData.balances.ewallet[txSelectedSource.id] += (txType === 'in' ? amount : -amount);
+  if(txType === 'out' && sourceBalance(txSelectedSource) - amount < 0){
+    const ok = confirm(`Saldo ${txSelectedSource.name} (${fmtRupiah(sourceBalance(txSelectedSource))}) tidak cukup untuk pengeluaran ini. Tetap catat? Saldonya akan jadi minus.`);
+    if(!ok) return;
   }
+
+  adjustBalance(txSelectedSource, txType === 'in' ? amount : -amount);
 
   currentData.transactions.unshift({
     id: uid(),
@@ -658,9 +745,7 @@ function deleteTx(id){
   const t = currentData.transactions[idx];
   // revert balance
   const sign = t.type === 'in' ? -1 : 1;
-  if(t.source.type === 'cash'){ currentData.balances.cash += sign * t.amount; }
-  else if(t.source.type === 'bank' && t.source.id){ currentData.balances.bank[t.source.id] = (currentData.balances.bank[t.source.id]||0) + sign*t.amount; }
-  else if(t.source.type === 'ewallet' && t.source.id){ currentData.balances.ewallet[t.source.id] = (currentData.balances.ewallet[t.source.id]||0) + sign*t.amount; }
+  adjustBalance(t.source, sign * t.amount);
 
   currentData.transactions.splice(idx,1);
   saveUserData(currentUser, currentData);
@@ -683,9 +768,11 @@ function refreshWallets(){
     const row = document.createElement('div');
     row.className = 'row-item';
     row.style.animationDelay = (i*40) + 'ms';
+    row.style.cursor = 'pointer';
+    row.onclick = () => openBalanceModal('bank', b.id);
     row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
-      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>
-      <button class="rdel" onclick="confirmDeleteWallet('bank','${b.id}')" title="Hapus">
+      <svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" style=\"color:var(--ink-soft); margin-right:6px; flex-shrink:0;\"><path d=\"M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.bank[b.id]||0)}</span>
+      <button class="rdel" onclick="event.stopPropagation(); confirmDeleteWallet('bank','${b.id}')" title="Hapus">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>`;
     bankWrap.appendChild(row);
@@ -701,15 +788,77 @@ function refreshWallets(){
     const row = document.createElement('div');
     row.className = 'row-item';
     row.style.animationDelay = (i*40) + 'ms';
+    row.style.cursor = 'pointer';
+    row.onclick = () => openBalanceModal('ewallet', b.id);
     row.innerHTML = `${logoHTML}<span class="rname">${escapeHtml(b.name)}</span>
-      <span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>
-      <button class="rdel" onclick="confirmDeleteWallet('ewallet','${b.id}')" title="Hapus">
+      <svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" style=\"color:var(--ink-soft); margin-right:6px; flex-shrink:0;\"><path d=\"M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span style="font-family:var(--mono); font-weight:800; margin-right:8px;">${fmtRupiah(currentData.balances.ewallet[b.id]||0)}</span>
+      <button class="rdel" onclick="event.stopPropagation(); confirmDeleteWallet('ewallet','${b.id}')" title="Hapus">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>`;
     ewWrap.appendChild(row);
   });
 
-  document.getElementById('wallet-cash-display').textContent = fmtRupiah(currentData.balances.cash||0);
+  const cashEl = document.getElementById('wallet-cash-display');
+  cashEl.textContent = fmtRupiah(currentData.balances.cash||0);
+  const cashRow = cashEl.parentElement;
+  cashRow.style.cursor = 'pointer';
+  cashRow.onclick = () => openBalanceModal('cash');
+  if(!cashRow.querySelector('.edit-hint')){
+    cashEl.insertAdjacentHTML('beforebegin', `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:var(--ink-soft); margin-right:6px; flex-shrink:0;"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`.replace('<svg','<svg class="edit-hint"'));
+  }
+}
+
+/* ---------- Ubah / isi saldo (bank, e-wallet, cash) ---------- */
+function openBalanceModal(kind, id, isNew){
+  let name, logoHTML = '', current;
+  if(kind === 'cash'){
+    name = 'Cash di tangan';
+    current = currentData.balances.cash || 0;
+  } else {
+    const list = kind === 'bank' ? currentData.banks : currentData.ewallets;
+    const item = list.find(w => w.id === id);
+    if(!item) return;
+    name = item.name;
+    if(item.logo) logoHTML = `<img src="${escapeHtml(item.logo)}" class="wlogo-sm" alt="">`;
+    current = (kind === 'bank' ? currentData.balances.bank : currentData.balances.ewallet)[id] || 0;
+  }
+  window._balTarget = { kind, id };
+
+  const title = isNew ? `${escapeHtml(name)} ditambahkan` : 'Ubah saldo';
+  const sub = isNew ? 'Isi saldo awalnya sekarang (boleh dikosongkan).' : 'Masukkan saldo yang benar saat ini.';
+
+  document.getElementById('wallet-picker-body').innerHTML = `
+    <h3 class="modal-title">${title}</h3>
+    <p class="modal-sub">${sub}</p>
+    <div class="field">
+      <label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(name)}</label>
+      <div class="amount-input-wrap" style="margin-bottom:0;">
+        <span class="rp">Rp</span>
+        <input type="number" id="bal-input" inputmode="numeric" placeholder="0" value="${current || ''}" onkeydown="if(event.key==='Enter') saveBalance()">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveBalance()">Simpan saldo</button>
+  `;
+  openModal('wallet-picker-modal');
+  setTimeout(() => { const i = document.getElementById('bal-input'); if(i){ i.focus(); i.select(); } }, 350);
+}
+
+function saveBalance(){
+  const t = window._balTarget;
+  if(!t) return;
+  const raw = document.getElementById('bal-input').value;
+  const val = raw === '' ? 0 : Number(raw);
+  if(!isFinite(val)){ showToast('Nominal tidak valid'); return; }
+
+  if(t.kind === 'cash') currentData.balances.cash = val;
+  else if(t.kind === 'bank') currentData.balances.bank[t.id] = val;
+  else currentData.balances.ewallet[t.id] = val;
+
+  saveUserData(currentUser, currentData);
+  closeWalletPicker();
+  refreshWallets();
+  refreshHome();
+  showToast('Saldo disimpan');
 }
 
 /* Hapus bank/e-wallet. Kalau masih ada transaksi yang tercatat lewat
@@ -757,16 +906,47 @@ function openAddWalletModal(){
 function refreshSettings(){
   document.getElementById('set-username').textContent = currentUser;
   const labels = { gaji:'Gaji', usaha:'Usaha', keduanya:'Gaji & usaha' };
-  document.getElementById('set-incometype').textContent = labels[currentData.incomeType] || '-';
+  const incEl = document.getElementById('set-incometype');
+  incEl.textContent = (labels[currentData.incomeType] || '-') + '  ›';
+  const incRow = incEl.parentElement;
+  incRow.style.cursor = 'pointer';
+  incRow.onclick = openIncomeTypeModal;
   document.getElementById('set-txcount').textContent = currentData.transactions.length;
+}
+
+function openIncomeTypeModal(){
+  const opts = [['gaji','Gaji bulanan / harian'],['usaha','Usaha / jualan sendiri'],['keduanya','Keduanya']];
+  document.getElementById('wallet-picker-body').innerHTML = `
+    <h3 class="modal-title">Jenis penghasilan</h3>
+    <p class="modal-sub">Pilih yang paling sesuai. Bisa diganti lagi kapan saja.</p>
+    <div class="stack">` + opts.map(([k,label]) => `
+      <div class="source-opt${currentData.incomeType===k?' selected':''}" style="width:100%; flex-direction:row; justify-content:flex-start; padding:16px;" onclick="setIncomeType('${k}')">
+        <span class="sname">${label}</span>
+      </div>`).join('') + `</div>`;
+  openModal('wallet-picker-modal');
+}
+function setIncomeType(type){
+  if(!['gaji','usaha','keduanya'].includes(type)) return;
+  currentData.incomeType = type;
+  saveUserData(currentUser, currentData);
+  closeWalletPicker();
+  refreshSettings();
+  showToast('Jenis penghasilan diperbarui');
 }
 
 /* =========================================================
    PDF RECEIPT
    ========================================================= */
 function printReceipt(){
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    showToast('Library PDF belum termuat. Sambungkan internet sekali, lalu coba lagi.');
+    return;
+  }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:[80, 200 + currentData.transactions.length*6] });
+  // Tinggi struk dihitung dari isi: header ~28mm + 8,6mm per transaksi + footer ~44mm
+  const n = currentData.transactions.length;
+  const pageH = Math.max(100, Math.ceil(28 + (n ? n*8.6 : 5) + 44));
+  const doc = new jsPDF({ unit:'mm', format:[80, pageH] });
 
   let y = 10;
   doc.setFont('courier', 'bold');
@@ -779,6 +959,7 @@ function printReceipt(){
   doc.text('--------------------------------', 40, y, { align:'center' }); y += 5;
 
   const txs = currentData.transactions.slice().reverse();
+  if(!txs.length){ doc.text('Belum ada transaksi', 40, y, { align:'center' }); y += 5; }
   let sumIn = 0, sumOut = 0;
 
   txs.forEach(t => {
@@ -807,8 +988,12 @@ function printReceipt(){
   doc.text('Terima kasih sudah mencatat', 40, y, {align:'center'}); y += 4;
   doc.text('keuanganmu dengan rapi :)', 40, y, {align:'center'});
 
-  doc.save(`struk-${currentUser}-${todayKey()}.pdf`);
-  showToast('Struk PDF diunduh');
+  try{
+    doc.save(`struk-${currentUser}-${todayKey()}.pdf`);
+    showToast('Struk PDF diunduh');
+  }catch(e){
+    showToast('Gagal membuat struk PDF');
+  }
 }
 
 /* =========================================================
@@ -826,26 +1011,12 @@ function printReceipt(){
    baru langsung kepakai di request berikutnya. Tidak perlu ubah
    apa pun di sw.js setiap deploy.
    ========================================================= */
-let swRegistration = null;
-
 function setUpdateBtnState(mode){
   const btn = document.getElementById('update-check-btn');
   if(!btn) return;
   btn.classList.remove('spinning','has-update');
   if(mode === 'checking') btn.classList.add('spinning');
   if(mode === 'available') btn.classList.add('has-update');
-}
-
-function showUpdateToast(text){
-  const el = document.getElementById('update-toast');
-  const txt = document.getElementById('update-toast-text');
-  if(!el) return;
-  txt.textContent = text;
-  el.classList.add('show');
-}
-function hideUpdateToast(){
-  const el = document.getElementById('update-toast');
-  if(el) el.classList.remove('show');
 }
 
 function initServiceWorker(){
@@ -855,9 +1026,7 @@ function initServiceWorker(){
   if(versionLabel) versionLabel.textContent = 'Auto-update aktif';
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then((reg) => {
-      swRegistration = reg;
-    }).catch(()=>{});
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
 
@@ -912,6 +1081,71 @@ function triggerImportBackup(){
   document.getElementById('import-file-input').click();
 }
 
+const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const num = (v, d=0) => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) && isFinite(Number(v)) ? Number(v) : d;
+const cleanStr = (v, max) => String(v == null ? '' : v).slice(0, max);
+
+function sanitizeBalanceMap(obj){
+  const out = {};
+  if(!obj || typeof obj !== 'object') return out;
+  Object.keys(obj).forEach(k => {
+    if(BAD_NAMES.includes(k)) return;
+    out[k] = num(obj[k], 0);
+  });
+  return out;
+}
+function sanitizeWalletList(list, kind){
+  const out = [];
+  (Array.isArray(list) ? list : []).forEach(item => {
+    if(typeof item === 'string'){ out.push(cleanStr(item, 40)); return; } // format lama, dimigrasi saat dimuat
+    if(!item || typeof item !== 'object' || !SAFE_ID.test(String(item.id))) return;
+    const cat = catalogItem(kind, item.key);
+    out.push({ id:String(item.id), key: cat ? cat.key : null, name: cleanStr(item.name, 40) || (cat ? cat.name : 'Tanpa nama'), logo: cat ? cat.logo : null });
+  });
+  return out;
+}
+// Mengembalikan data bersih, atau null kalau strukturnya tidak masuk akal
+function sanitizeBackupData(d){
+  if(!d || typeof d !== 'object') return null;
+  const banks = sanitizeWalletList(d.banks, 'bank');
+  const ewallets = sanitizeWalletList(d.ewallets, 'ewallet');
+  const bal = d.balances || {};
+  const txs = [];
+  (Array.isArray(d.transactions) ? d.transactions : []).forEach(t => {
+    if(!t || typeof t !== 'object') return;
+    if(t.type !== 'in' && t.type !== 'out') return;
+    const amount = num(t.amount, 0);
+    const when = new Date(t.date);
+    if(amount <= 0 || isNaN(when.getTime())) return;
+    const src = t.source && typeof t.source === 'object' ? t.source : {};
+    const stype = ['bank','ewallet','cash'].includes(src.type) ? src.type : 'cash';
+    txs.push({
+      id: SAFE_ID.test(String(t.id)) ? String(t.id) : uid(),
+      type: t.type,
+      amount,
+      name: cleanStr(t.name, 100),
+      source: { type:stype, id: SAFE_ID.test(String(src.id)) ? String(src.id) : undefined, name: cleanStr(src.name, 40) },
+      date: when.toISOString()
+    });
+  });
+  return {
+    incomeType: ['gaji','usaha','keduanya'].includes(d.incomeType) ? d.incomeType : null,
+    banks, ewallets,
+    balances: { cash: num(bal.cash, 0), bank: sanitizeBalanceMap(bal.bank), ewallet: sanitizeBalanceMap(bal.ewallet) },
+    transactions: txs
+  };
+}
+function sanitizeUserRecord(r){
+  if(!r || typeof r !== 'object' || typeof r.passHash !== 'string') return null;
+  const out = { passHash: cleanStr(r.passHash, 200), createdAt: cleanStr(r.createdAt, 40) };
+  if(r.algo === 'pbkdf2'){
+    const iter = num(r.iter, 0);
+    if(typeof r.salt !== 'string' || iter < 1000 || iter > 1000000) return null;
+    out.algo = 'pbkdf2'; out.salt = cleanStr(r.salt, 100); out.iter = iter;
+  }
+  return out;
+}
+
 function handleImportFile(event){
   const file = event.target.files[0];
   if(!file) return;
@@ -927,29 +1161,36 @@ function handleImportFile(event){
       return;
     }
 
-    if(!backup || !backup.username || !backup.data){
+    const cleanData = backup ? sanitizeBackupData(backup.data) : null;
+    const cleanUsername = backup && typeof backup.username === 'string' ? backup.username.trim() : '';
+    if(!cleanData || !cleanUsername || cleanUsername.length > 30 || BAD_NAMES.includes(cleanUsername)){
       showToast('File backup tidak valid');
       event.target.value = '';
       return;
     }
+    const cleanRecord = sanitizeUserRecord(backup.userRecord);
 
-    const targetUsername = backup.username;
+    const targetUsername = cleanUsername;
     const users = getUsers();
     const alreadyExists = !!users[targetUsername];
 
     const doImport = () => {
-      if(backup.userRecord){
-        users[targetUsername] = backup.userRecord;
+      if(cleanRecord){
+        users[targetUsername] = cleanRecord;
         saveUsers(users);
+      } else if(!users[targetUsername]){
+        showToast('Backup tidak berisi sandi yang valid');
+        event.target.value = '';
+        return;
       }
-      saveUserData(targetUsername, backup.data);
+      saveUserData(targetUsername, cleanData);
       showToast(`Backup akun "${targetUsername}" berhasil dipulihkan`);
       event.target.value = '';
 
       // Kalau akun yang dipulihkan adalah akun yang sedang login, refresh tampilan
       if(currentUser === targetUsername){
         currentData = getUserData(targetUsername);
-        refreshHome();
+        refreshHome(); refreshWallets(); refreshSettings();
       }
     };
 
