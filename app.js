@@ -86,6 +86,39 @@ async function verifyPass(rec, pass){
   return { ok:true, upgraded };
 }
 
+/* ---------- Input nominal dengan titik ribuan (1.000.000) ---------- */
+function formatMoneyString(str, allowNeg){
+  str = String(str == null ? '' : str);
+  const neg = !!allowNeg && str.trim().startsWith('-');
+  const digits = str.replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,15);
+  if(!digits) return neg ? '-' : '';
+  return (neg ? '-' : '') + digits.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+function parseMoney(str){
+  const s = String(str == null ? '' : str);
+  const digits = s.replace(/\D/g,'').slice(0,15);
+  if(!digits) return 0;
+  const n = Number(digits);
+  return s.trim().startsWith('-') ? -n : n;
+}
+function moneyVal(n){ n = Number(n) || 0; return n === 0 ? '' : formatMoneyString(String(Math.trunc(n)), true); }
+
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if(!el || !el.classList || !el.classList.contains('money-input')) return;
+  const allowNeg = el.getAttribute('data-neg') === '1';
+  const before = el.value;
+  const caret = el.selectionStart == null ? before.length : el.selectionStart;
+  const digitsBefore = (before.slice(0, caret).match(/\d/g) || []).length;
+  const out = formatMoneyString(before, allowNeg);
+  if(out === before) return;
+  el.value = out;
+  let pos = 0, seen = 0;
+  if(digitsBefore === 0){ pos = (out.startsWith('-') && caret > 0) ? 1 : 0; }
+  else { while(pos < out.length && seen < digitsBefore){ if(/\d/.test(out[pos])) seen++; pos++; } }
+  try{ el.setSelectionRange(pos, pos); }catch(_){}
+});
+
 function fmtRupiah(n){
   n = Math.round(Number(n)||0);
   return 'Rp' + n.toLocaleString('id-ID');
@@ -441,7 +474,7 @@ function renderOBBalanceBank(){
     field.innerHTML = `<label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(b.name)}</label>
       <div class="amount-input-wrap" style="margin-bottom:0;">
         <span class="rp">Rp</span>
-        <input type="number" inputmode="numeric" placeholder="0" data-id="${b.id}" class="ob-bank-balance-input" value="${currentData.balances.bank[b.id]||''}">
+        <input type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-id="${b.id}" class="ob-bank-balance-input money-input" value="${moneyVal(currentData.balances.bank[b.id])}">
       </div>`;
     wrap.appendChild(field);
   });
@@ -460,7 +493,7 @@ function renderOBBalanceEwallet(){
     field.innerHTML = `<label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(b.name)}</label>
       <div class="amount-input-wrap" style="margin-bottom:0;">
         <span class="rp">Rp</span>
-        <input type="number" inputmode="numeric" placeholder="0" data-id="${b.id}" class="ob-ewallet-balance-input" value="${currentData.balances.ewallet[b.id]||''}">
+        <input type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-id="${b.id}" class="ob-ewallet-balance-input money-input" value="${moneyVal(currentData.balances.ewallet[b.id])}">
       </div>`;
     wrap.appendChild(field);
   });
@@ -470,20 +503,20 @@ function collectOBBankBalances(){
   document.querySelectorAll('.ob-bank-balance-input').forEach(inp => {
     const id = inp.getAttribute('data-id');
     if(!currentData.banks.some(b => b.id === id)) return;
-    currentData.balances.bank[id] = Number(inp.value) || 0;
+    currentData.balances.bank[id] = parseMoney(inp.value);
   });
 }
 function collectOBEwalletBalances(){
   document.querySelectorAll('.ob-ewallet-balance-input').forEach(inp => {
     const id = inp.getAttribute('data-id');
     if(!currentData.ewallets.some(b => b.id === id)) return;
-    currentData.balances.ewallet[id] = Number(inp.value) || 0;
+    currentData.balances.ewallet[id] = parseMoney(inp.value);
   });
 }
 
 function finishOnboarding(){
   collectOBEwalletBalances();
-  const cashVal = Number(document.getElementById('ob-cash-input').value) || 0;
+  const cashVal = parseMoney(document.getElementById('ob-cash-input').value);
   currentData.balances.cash = cashVal;
   currentData.incomeType = obSelectedIncomeType || 'gaji';
   saveUserData(currentUser, currentData);
@@ -582,10 +615,15 @@ function sourceIconSVG(type){
   return `<svg class="sicon" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="6.5" width="19" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg>`;
 }
 
+const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function lastSourceKey(type){ return `cu_lastsrc_${currentUser}_${type}`; }
+
 function openTxModal(type){
   txType = type;
   txSelectedSource = null;
   const body = document.getElementById('tx-modal-body');
+  body.className = 'tx-body' + (type === 'out' ? ' out' : '');
 
   // Build source list
   let sources = [];
@@ -596,42 +634,68 @@ function openTxModal(type){
   const title = type === 'in' ? 'Catat pemasukan' : 'Catat pengeluaran';
   const sub = type === 'in' ? 'Uang masuk lewat mana?' : 'Bayar pakai apa?';
 
-  let sourceGridHTML = '<div class="source-grid" id="tx-source-grid">';
+  let tiles = '<div class="pay-grid" id="tx-source-grid">';
   sources.forEach((s, idx) => {
-    const iconHTML = s.logo ? `<img src="${s.logo}" class="sicon-logo" alt="">` : sourceIconSVG(s.type);
-    sourceGridHTML += `<div class="source-opt" style="animation-delay:${idx*30}ms" data-idx="${idx}" onclick="selectTxSource(${idx})">
+    const iconHTML = s.logo ? `<img src="${escapeHtml(s.logo)}" class="sicon-logo" alt="">` : sourceIconSVG(s.type);
+    tiles += `<div class="pay-tile t${idx % 5}" style="animation-delay:${idx*45}ms" data-idx="${idx}" onclick="selectTxSource(${idx})">
+      <span class="pay-check">${CHECK_SVG}</span>
       ${iconHTML}
-      <span class="sname">${escapeHtml(s.name)}</span>
-      <span class="samt">${fmtRupiah(s.bal)}</span>
+      <span class="pname">${escapeHtml(s.name)}</span>
+      <span class="pbal">${fmtRupiah(s.bal)}</span>
     </div>`;
   });
-  sourceGridHTML += '</div>';
+  tiles += '</div>';
 
   window._txSources = sources;
+
+  const nameLabel = type === 'in' ? 'Nama pemasukan' : 'Nama pengeluaran';
+  const namePh = type === 'in' ? 'cth. Gaji, Jualan' : 'cth. Makan siang';
+  const closeSVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  const pencilSVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   body.innerHTML = `
     <h3 class="modal-title">${title}</h3>
     <p class="modal-sub">${sub}</p>
-    ${sourceGridHTML}
-    <div class="field">
-      <label>${type === 'in' ? 'Nama pemasukan' : 'Nama pengeluaran'}</label>
-      <input type="text" id="tx-name" placeholder="${type === 'in' ? 'cth. Gaji, Jual barang' : 'cth. Makan siang, Bensin'}">
+    ${tiles}
+    <div class="sec-label">Detail</div>
+    <div class="row-card" style="animation-delay:150ms">
+      <div class="row-ico">${pencilSVG}</div>
+      <div class="row-body">
+        <small>${nameLabel}</small>
+        <input type="text" id="tx-name" placeholder="${namePh}" autocomplete="off" maxlength="100">
+      </div>
+      <span class="row-check">${CHECK_SVG}</span>
     </div>
-    <div class="amount-input-wrap">
-      <span class="rp">Rp</span>
-      <input type="number" id="tx-amount" placeholder="0" inputmode="numeric">
+    <div class="row-card" style="animation-delay:200ms; margin-bottom:16px;">
+      <div class="row-ico">Rp</div>
+      <div class="row-body">
+        <small>Nominal</small>
+        <input type="text" id="tx-amount" class="money-input" inputmode="numeric" autocomplete="off" placeholder="0" enterkeyhint="done" onkeydown="if(event.key==='Enter') submitTx()">
+      </div>
+      <span class="row-check">${CHECK_SVG}</span>
     </div>
-    <button class="btn ${type==='in' ? 'btn-primary' : 'btn-buy'}" onclick="submitTx()">
-      ${type === 'in' ? 'Simpan pemasukan' : 'Buy — catat pengeluaran'}
-    </button>
+    <div class="action-row">
+      <button class="btn-circle" onclick="closeTxModal()" aria-label="Batal">${closeSVG}</button>
+      <button class="btn-pill" onclick="submitTx()">${type === 'in' ? 'Simpan pemasukan' : 'Catat pengeluaran'}</button>
+    </div>
   `;
   openModal('tx-modal');
+
+  // Ingat sumber dana yang terakhir dipakai untuk jenis transaksi ini
+  try{
+    const last = localStorage.getItem(lastSourceKey(type));
+    if(last){
+      const idx = sources.findIndex(s => (s.type + ':' + (s.id || '')) === last);
+      if(idx !== -1) selectTxSource(idx);
+    }
+  }catch(_){}
 }
 
 function selectTxSource(idx){
   txSelectedSource = window._txSources[idx];
-  document.querySelectorAll('#tx-source-grid .source-opt').forEach(el=>el.classList.remove('selected'));
-  document.querySelector(`#tx-source-grid .source-opt[data-idx="${idx}"]`).classList.add('selected');
+  document.querySelectorAll('#tx-source-grid .pay-tile').forEach(el=>el.classList.remove('selected'));
+  const tile = document.querySelector(`#tx-source-grid .pay-tile[data-idx="${idx}"]`);
+  if(tile) tile.classList.add('selected');
 }
 
 function closeTxModal(){
@@ -659,7 +723,7 @@ function adjustBalance(src, delta){
 
 function submitTx(){
   const name = document.getElementById('tx-name').value.trim();
-  const amount = Number(document.getElementById('tx-amount').value);
+  const amount = parseMoney(document.getElementById('tx-amount').value);
 
   if(!txSelectedSource){ showToast('Pilih sumber dana dulu'); return; }
   if(!name){ showToast('Isi nama transaksi'); return; }
@@ -671,6 +735,7 @@ function submitTx(){
   }
 
   adjustBalance(txSelectedSource, txType === 'in' ? amount : -amount);
+  try{ localStorage.setItem(lastSourceKey(txType), txSelectedSource.type + ':' + (txSelectedSource.id || '')); }catch(_){}
 
   currentData.transactions.unshift({
     id: uid(),
@@ -819,7 +884,7 @@ function openBalanceModal(kind, id, isNew){
     const item = list.find(w => w.id === id);
     if(!item) return;
     name = item.name;
-    if(item.logo) logoHTML = `<img src="${escapeHtml(item.logo)}" class="wlogo-sm" alt="">`;
+    if(item.logo) logoHTML = `<img src="${escapeHtml(item.logo)}" class="wlogo" alt="">`;
     current = (kind === 'bank' ? currentData.balances.bank : currentData.balances.ewallet)[id] || 0;
   }
   window._balTarget = { kind, id };
@@ -830,14 +895,14 @@ function openBalanceModal(kind, id, isNew){
   document.getElementById('wallet-picker-body').innerHTML = `
     <h3 class="modal-title">${title}</h3>
     <p class="modal-sub">${sub}</p>
-    <div class="field">
-      <label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(name)}</label>
-      <div class="amount-input-wrap" style="margin-bottom:0;">
-        <span class="rp">Rp</span>
-        <input type="number" id="bal-input" inputmode="numeric" placeholder="0" value="${current || ''}" onkeydown="if(event.key==='Enter') saveBalance()">
+    <div class="row-card" style="margin-bottom:14px;">
+      <div class="row-ico">${logoHTML || 'Rp'}</div>
+      <div class="row-body">
+        <small>${escapeHtml(name)}</small>
+        <input type="text" id="bal-input" class="money-input" data-neg="1" inputmode="numeric" autocomplete="off" placeholder="0" value="${moneyVal(current)}" onkeydown="if(event.key==='Enter') saveBalance()">
       </div>
     </div>
-    <button class="btn btn-primary" onclick="saveBalance()">Simpan saldo</button>
+    <button class="btn-pill" style="width:100%;" onclick="saveBalance()">Simpan saldo</button>
   `;
   openModal('wallet-picker-modal');
   setTimeout(() => { const i = document.getElementById('bal-input'); if(i){ i.focus(); i.select(); } }, 350);
@@ -847,8 +912,7 @@ function saveBalance(){
   const t = window._balTarget;
   if(!t) return;
   const raw = document.getElementById('bal-input').value;
-  const val = raw === '' ? 0 : Number(raw);
-  if(!isFinite(val)){ showToast('Nominal tidak valid'); return; }
+  const val = raw.trim() === '' ? 0 : parseMoney(raw);
 
   if(t.kind === 'cash') currentData.balances.cash = val;
   else if(t.kind === 'bank') currentData.balances.bank[t.id] = val;
