@@ -210,6 +210,7 @@ function saveUserData(username, data){
 function defaultUserData(){
   return {
     incomeType: null,
+    profilePhoto: null, // data URL JPEG hasil crop/resize
     // banks/ewallets: [{id, key, name, logo}] -- id unik per item ditambahkan (boleh duplikat key, mis. 2x BCA)
     banks: [],
     ewallets: [],
@@ -595,6 +596,167 @@ function setAmountText(id, text){
   el.classList.add('pop');
 }
 
+const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+
+function avatarInitial(){ return (currentUser || '?').trim().charAt(0).toUpperCase() || '?'; }
+function applyAvatar(el){
+  if(!el) return;
+  const ph = currentData && currentData.profilePhoto;
+  if(ph && PHOTO_RE.test(ph)){
+    el.style.backgroundImage = `url("${ph}")`;
+    el.textContent = '';
+  } else {
+    el.style.backgroundImage = '';
+    el.textContent = avatarInitial();
+  }
+}
+function refreshAvatars(){
+  applyAvatar(document.getElementById('home-avatar'));
+  applyAvatar(document.getElementById('set-avatar'));
+  const del = document.getElementById('btn-del-photo');
+  if(del) del.style.display = (currentData && currentData.profilePhoto) ? '' : 'none';
+}
+
+/* ---------- Foto profil ---------- */
+function pickProfilePhoto(){ document.getElementById('photo-input').click(); }
+function handlePhotoFile(event){
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if(!file) return;
+  if(!/^image\//.test(file.type)){ showToast('Pilih file gambar'); return; }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    try{
+      const size = 320;
+      const c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const ctx = c.getContext('2d');
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 2;
+      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      currentData.profilePhoto = c.toDataURL('image/jpeg', 0.85);
+      saveUserData(currentUser, currentData);
+      refreshAvatars();
+      showToast('Foto profil diperbarui');
+    }catch(e){
+      showToast('Gagal memproses foto');
+    }
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); showToast('Foto tidak bisa dibaca'); };
+  img.src = url;
+}
+function removeProfilePhoto(){
+  currentData.profilePhoto = null;
+  saveUserData(currentUser, currentData);
+  refreshAvatars();
+  showToast('Foto profil dihapus');
+}
+
+/* ---------- Grafik Beranda ---------- */
+const DAY_ABBR = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+const MON_ABBR = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+let homeRange = 'week';
+let homeSel = null;
+let _chart = { bk:[], max:1, H:150, MIN:8 };
+
+function fmtShortRp(n){
+  n = Math.round(n);
+  const trim = (v) => (v >= 10 ? String(Math.round(v)) : String(Math.round(v*10)/10)).replace('.', ',');
+  if(n >= 999500) return 'Rp' + trim(n/1e6) + 'jt';
+  if(n >= 1000) return 'Rp' + trim(n/1e3) + 'rb';
+  return 'Rp' + n;
+}
+
+function chartBuckets(range){
+  const now = new Date();
+  const out = [];
+  if(range === 'week'){
+    for(let i = 6; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      out.push({ key: todayKey(d), label: DAY_ABBR[d.getDay()], in:0, out:0 });
+    }
+  } else {
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      out.push({ key: todayKey(d).slice(0,7), label: MON_ABBR[d.getMonth()], in:0, out:0 });
+    }
+  }
+  const idx = {};
+  out.forEach((b, i) => idx[b.key] = i);
+  currentData.transactions.forEach(t => {
+    const full = todayKey(new Date(t.date));
+    const k = range === 'week' ? full : full.slice(0,7);
+    if(k in idx) out[idx[k]][t.type] += t.amount;
+  });
+  return out;
+}
+
+function chartTipHTML(i){
+  const b = _chart.bk[i];
+  const last = _chart.bk.length - 1;
+  const cls = i === 0 ? ' l' : (i === last ? ' r' : '');
+  const hi = b.in ? Math.max(_chart.MIN, Math.round(b.in/_chart.max*_chart.H)) : _chart.MIN;
+  const ho = b.out ? Math.max(_chart.MIN, Math.round(b.out/_chart.max*_chart.H)) : _chart.MIN;
+  const body = (!b.in && !b.out)
+    ? 'Belum ada transaksi'
+    : `<i class="tdot in"></i>${fmtShortRp(b.in)}<span class="tip-sep">|</span><i class="tdot out"></i>${fmtShortRp(b.out)}`;
+  return `<div class="ch-tip${cls}" style="bottom:${Math.max(hi, ho) + 12}px">${body}</div>`;
+}
+
+function renderHomeChart(){
+  const wrap = document.getElementById('home-chart');
+  if(!wrap) return;
+  const bk = chartBuckets(homeRange);
+  const max = Math.max(1, ...bk.map(b => Math.max(b.in, b.out)));
+  _chart = { bk, max, H:150, MIN:8 };
+  if(homeSel == null || homeSel >= bk.length) homeSel = bk.length - 1;
+  wrap.className = 'chart-area' + (homeRange === 'month' ? ' month' : '');
+  wrap.innerHTML = bk.map((b, i) => {
+    const hi = b.in ? Math.max(_chart.MIN, Math.round(b.in/max*_chart.H)) : _chart.MIN;
+    const ho = b.out ? Math.max(_chart.MIN, Math.round(b.out/max*_chart.H)) : _chart.MIN;
+    const sel = i === homeSel;
+    return `<div class="ch-col${sel ? ' sel' : ''}" onclick="selectChartCol(${i})">
+      <div class="ch-bars" style="height:${_chart.H}px">
+        ${sel ? chartTipHTML(i) : ''}
+        <span class="ch-bar in" style="height:${hi}px; animation-delay:${i*45}ms"></span>
+        <span class="ch-bar out" style="height:${ho}px; animation-delay:${i*45 + 25}ms"></span>
+      </div>
+      <span class="ch-lbl">${b.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectChartCol(i){
+  homeSel = i;
+  document.querySelectorAll('#home-chart .ch-col').forEach((c, idx) => {
+    c.classList.toggle('sel', idx === i);
+    const old = c.querySelector('.ch-tip');
+    if(old) old.remove();
+    if(idx === i) c.querySelector('.ch-bars').insertAdjacentHTML('afterbegin', chartTipHTML(idx));
+  });
+}
+
+function toggleRangeMenu(e){
+  if(e) e.stopPropagation();
+  document.getElementById('range-wrap').classList.toggle('open');
+}
+function setHomeRange(r){
+  homeRange = r;
+  homeSel = null;
+  document.getElementById('range-label').textContent = r === 'week' ? 'Mingguan' : 'Bulanan';
+  document.getElementById('range-opt-week').classList.toggle('sel', r === 'week');
+  document.getElementById('range-opt-month').classList.toggle('sel', r === 'month');
+  document.getElementById('range-wrap').classList.remove('open');
+  renderHomeChart();
+}
+document.addEventListener('click', (e) => {
+  const w = document.getElementById('range-wrap');
+  if(w && !(e.target && e.target.closest && e.target.closest('#range-wrap'))) w.classList.remove('open');
+});
+
 function refreshHome(){
   setAmountText('home-total-balance', fmtRupiah(totalBalance()));
   const tx = todayTx();
@@ -602,9 +764,9 @@ function refreshHome(){
   const outTotal = tx.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0);
   setAmountText('total-in', fmtRupiah(inTotal));
   setAmountText('total-out', fmtRupiah(outTotal));
-  const sum = inTotal + outTotal;
-  document.getElementById('pct-in').textContent = sum ? Math.round(inTotal/sum*100) + '%' : '0%';
-  document.getElementById('pct-out').textContent = sum ? Math.round(outTotal/sum*100) + '%' : '0%';
+  document.getElementById('home-name').textContent = currentUser || '-';
+  refreshAvatars();
+  renderHomeChart();
 }
 
 /* =========================================================
@@ -1001,6 +1163,8 @@ function openAddWalletModal(){
    ========================================================= */
 function refreshSettings(){
   document.getElementById('set-username').textContent = currentUser;
+  document.getElementById('set-name-big').textContent = currentUser;
+  refreshAvatars();
   const labels = { gaji:'Gaji', usaha:'Usaha', keduanya:'Gaji & usaha' };
   const incEl = document.getElementById('set-incometype');
   incEl.textContent = (labels[currentData.incomeType] || '-') + '  ›';
@@ -1233,6 +1397,7 @@ function sanitizeBackupData(d){
   });
   return {
     incomeType: ['gaji','usaha','keduanya'].includes(d.incomeType) ? d.incomeType : null,
+    profilePhoto: (typeof d.profilePhoto === 'string' && d.profilePhoto.length < 500000 && PHOTO_RE.test(d.profilePhoto)) ? d.profilePhoto : null,
     banks, ewallets,
     balances: { cash: num(bal.cash, 0), bank: sanitizeBalanceMap(bal.bank), ewallet: sanitizeBalanceMap(bal.ewallet) },
     transactions: txs

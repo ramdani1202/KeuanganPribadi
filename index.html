@@ -174,41 +174,133 @@
   .progress-dots span.done{ background:var(--in); }
 
   /* HOME */
-  .home-header{ padding:22px 20px 6px; }
-  .home-header .greet{ font-size:13px; color:var(--ink-soft); font-weight:600; }
-  .home-header .acc{ font-size:20px; font-weight:800; margin-top:2px; color:var(--ink); }
-  .home-cards{ flex:1; display:flex; flex-direction:column; gap:14px; padding:14px 20px 10px; }
-  .big-card{
-    flex:1; border-radius:28px; padding:24px; display:flex; flex-direction:column; justify-content:space-between;
-    position:relative; overflow:hidden; min-height:150px; border:none; cursor:pointer; text-align:left;
-    transition:transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .big-card:active{ transform:scale(0.97); }
-  .big-card.in{ background:linear-gradient(135deg, #14B8A6 0%, #0A6E64 100%); color:#FFFFFF; }
-  .big-card.out{ background:linear-gradient(135deg, #E0685A 0%, #A83A2F 100%); color:#FFFFFF; }
-  .big-card::after{
-    content:''; position:absolute; right:-40px; top:-40px; width:140px; height:140px;
-    border-radius:50%; background:rgba(255,255,255,0.08); pointer-events:none;
-  }
-  .card-top-row{ display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
-  .card-label{ font-size:14.5px; font-weight:700; opacity:0.95; display:flex; align-items:center; gap:9px;}
-  .card-label .icn-circle{
-    width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.22);
-    display:flex; align-items:center; justify-content:center; flex-shrink:0;
-  }
-  .card-pct{ font-size:12.5px; font-weight:700; background:rgba(255,255,255,0.22); padding:5px 12px; border-radius:20px; }
-  .card-amount{ font-size:32px; font-weight:800; letter-spacing:-0.5px; font-family:var(--mono); position:relative; z-index:1; display:inline-block; }
-  .card-amount.pop{ animation:amountPop 0.35s ease; }
+  .pop{ animation:amountPop 0.35s ease; display:inline-block; }
   @keyframes amountPop{ 0%{ transform:scale(1); } 35%{ transform:scale(1.08); } 100%{ transform:scale(1); } }
-  .card-sub{ font-size:12.5px; opacity:0.85; font-weight:600; position:relative; z-index:1; }
-
-  .balance-strip{
-    margin:0 20px 14px; background:linear-gradient(135deg, #0F766E 0%, #0B4A44 100%); border-radius:22px; padding:20px 22px;
-    box-shadow:0 8px 24px rgba(11,74,68,0.25); display:flex; justify-content:space-between; align-items:center;
+  .home-wrap{ flex:1; padding:18px 20px 16px; display:flex; flex-direction:column; gap:14px; }
+  .home-bar{ display:flex; align-items:center; gap:12px; }
+  .home-hello{ flex:1; min-width:0; line-height:1.2; }
+  .home-hello small{ display:block; font-size:12px; color:var(--ink-soft); font-weight:600; }
+  .home-hello b{ display:block; font-size:15px; font-weight:800; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .avatar{
+    width:46px; height:46px; border-radius:50%; border:0; padding:0; flex-shrink:0; overflow:hidden; cursor:pointer;
+    background:var(--in-soft) center/cover no-repeat; color:var(--in-deep); font-family:var(--sans);
+    display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800;
+    box-shadow:0 0 0 3px #FFFFFF, 0 4px 12px rgba(13,148,136,0.18);
+    -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1);
   }
-  .balance-strip .lbl{ font-size:12px; color:rgba(255,255,255,0.75); font-weight:700; letter-spacing:0.3px; }
-  .balance-strip .val{ font-size:20px; font-weight:800; font-family:var(--mono); color:#FFFFFF; display:inline-block; }
-  .balance-strip .val.pop{ animation:amountPop 0.35s ease; }
+  .avatar:active{ transform:scale(.92); }
+  .avatar.big{ width:96px; height:96px; font-size:38px; cursor:default; box-shadow:0 0 0 4px #FFFFFF, 0 8px 20px rgba(13,148,136,0.2); }
+  .round-btn{
+    width:44px; height:44px; border-radius:50%; border:0; background:var(--white); color:var(--ink); flex-shrink:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
+    -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+  }
+  .round-btn:active{ transform:scale(.9); }
+  .home-titlerow{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-top:4px; }
+  .home-title{ margin:0; font-size:31px; line-height:1.12; letter-spacing:-0.8px; font-weight:800; color:var(--ink); }
+  .range-wrap{ position:relative; flex-shrink:0; margin-bottom:6px; }
+  .range-btn{
+    display:flex; align-items:center; gap:6px; border:0; background:var(--white); color:var(--ink); border-radius:999px;
+    padding:9px 12px 9px 15px; font-size:13px; font-weight:700; font-family:var(--sans); cursor:pointer; box-shadow:var(--shadow);
+    -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+  }
+  .range-btn:active{ transform:scale(.94); }
+  .range-btn svg{ transition:transform .25s ease; }
+  .range-wrap.open .range-btn svg{ transform:rotate(180deg); }
+  .range-menu{
+    position:absolute; right:0; top:calc(100% + 8px); background:var(--white); border-radius:16px; padding:6px; min-width:132px;
+    box-shadow:0 12px 32px rgba(8,32,30,0.18); z-index:15; opacity:0; transform:translateY(-6px) scale(.96); transform-origin:top right;
+    pointer-events:none; transition:opacity .2s ease, transform .22s cubic-bezier(.34,1.56,.64,1);
+  }
+  .range-wrap.open .range-menu{ opacity:1; transform:none; pointer-events:auto; }
+  .range-menu button{
+    display:flex; width:100%; align-items:center; justify-content:space-between; gap:10px; border:0; background:none; cursor:pointer;
+    padding:11px 12px; border-radius:11px; font-size:13.5px; font-weight:700; color:var(--ink); font-family:var(--sans); text-align:left;
+  }
+  .range-menu button.sel{ background:var(--in-soft); color:var(--in-deep); }
+
+  .chart-card{ background:var(--white); border-radius:28px; padding:16px 18px 14px; box-shadow:var(--shadow); }
+  .chart-legend{ display:flex; gap:14px; font-size:11.5px; font-weight:700; color:var(--ink-soft); }
+  .chart-legend span{ display:flex; align-items:center; gap:6px; }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot.in, .tdot.in{ background:#14B8A6; }
+  .dot.out, .tdot.out{ background:#E0685A; }
+  .chart-area{ display:flex; align-items:flex-end; gap:2px; padding-top:46px; }
+  .ch-col{ flex:1; display:flex; flex-direction:column; align-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent; min-width:0; }
+  .ch-bars{ position:relative; width:100%; display:flex; align-items:flex-end; justify-content:center; gap:3px; }
+  .ch-bar{
+    width:11px; border-radius:999px; transform-origin:bottom; animation:barGrow .6s cubic-bezier(.2,.9,.25,1) backwards;
+    transition:background .3s ease;
+  }
+  .chart-area.month .ch-bar{ width:15px; }
+  .ch-bar.in{ background:#D2EFE9; }
+  .ch-bar.out{ background:#F8DAD5; }
+  .ch-col.sel .ch-bar.in{ background:#14B8A6; }
+  .ch-col.sel .ch-bar.out{ background:#E0685A; }
+  .ch-lbl{ margin-top:9px; font-size:12px; font-weight:600; color:var(--ink-soft); transition:color .2s ease; }
+  .ch-col.sel .ch-lbl{ color:var(--ink); font-weight:800; }
+  .ch-tip{
+    position:absolute; left:50%; transform:translateX(-50%); background:#0B2B29; color:#FFFFFF; z-index:3;
+    font-size:11px; font-weight:700; padding:6px 10px; border-radius:11px; white-space:nowrap;
+    display:flex; align-items:center; gap:5px; animation:tipIn .35s cubic-bezier(.34,1.56,.64,1);
+    pointer-events:none;
+  }
+  .ch-tip::after{
+    content:''; position:absolute; left:50%; bottom:-4px; width:9px; height:9px; background:#0B2B29;
+    transform:translateX(-50%) rotate(45deg); border-radius:2px;
+  }
+  .ch-tip.l{ left:-4px; transform:none; }
+  .ch-tip.l::after{ left:24px; }
+  .ch-tip.r{ left:auto; right:-4px; transform:none; }
+  .ch-tip.r::after{ left:auto; right:24px; transform:translateX(0) rotate(45deg); }
+  .tdot{ width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .tip-sep{ opacity:.35; margin:0 1px; }
+  @keyframes barGrow{ from{ transform:scaleY(0.05); opacity:.3; } to{ transform:scaleY(1); opacity:1; } }
+  @keyframes tipIn{ from{ opacity:0; margin-bottom:-6px; } to{ opacity:1; margin-bottom:0; } }
+
+  .tile-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .stat-tile{
+    position:relative; overflow:hidden; border:0; border-radius:26px; padding:16px; min-height:138px; cursor:pointer; text-align:left;
+    display:flex; flex-direction:column; justify-content:space-between; color:#FFFFFF; font-family:var(--sans);
+    -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+    animation:riseIn .45s cubic-bezier(.2,.8,.2,1) backwards;
+  }
+  .stat-tile:active{ transform:scale(.96); }
+  .stat-tile.in{ background:linear-gradient(135deg, #14B8A6 0%, #0A6E64 100%); box-shadow:0 12px 22px -12px rgba(10,110,100,.7); }
+  .stat-tile.out{ background:linear-gradient(135deg, #E9776A 0%, #B23F33 100%); box-shadow:0 12px 22px -12px rgba(178,63,51,.7); animation-delay:70ms; }
+  .stat-tile::after{ content:''; position:absolute; right:-34px; top:-34px; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,0.09); pointer-events:none; }
+  .st-top{ display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1; }
+  .st-ico{ width:34px; height:34px; border-radius:12px; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center; }
+  .st-plus{ width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center; }
+  .st-label{ display:block; font-size:12px; font-weight:600; opacity:.88; position:relative; z-index:1; }
+  .st-amt{ display:inline-block; font-family:var(--mono); font-weight:800; font-size:17px; letter-spacing:-0.4px; position:relative; z-index:1; overflow-wrap:anywhere; margin-top:2px; }
+
+  .wide-card{
+    display:flex; align-items:center; gap:14px; width:100%; border:0; background:var(--white); border-radius:24px; padding:14px 16px; cursor:pointer; text-align:left;
+    box-shadow:var(--shadow); font-family:var(--sans); -webkit-tap-highlight-color:transparent;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1); animation:riseIn .45s cubic-bezier(.2,.8,.2,1) backwards; animation-delay:130ms;
+  }
+  .wide-card:active{ transform:scale(.97); }
+  .wide-ico{ width:44px; height:44px; border-radius:15px; background:var(--in-soft); color:var(--in-deep); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .wide-body{ flex:1; min-width:0; }
+  .wide-body small{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); }
+  .wide-body b{ display:inline-block; font-family:var(--mono); font-weight:800; font-size:19px; color:var(--ink); letter-spacing:-0.3px; }
+  .wide-chev{ color:var(--ink-soft); flex-shrink:0; }
+
+  /* Profil (Pengaturan) */
+  .profile-card{ display:flex; flex-direction:column; align-items:center; gap:4px; margin:14px 0 22px; }
+  .avatar-wrap{ position:relative; margin-bottom:8px; }
+  .avatar-edit{
+    position:absolute; right:-2px; bottom:-2px; width:34px; height:34px; border-radius:50%; border:3px solid var(--paper);
+    background:var(--in); color:#FFFFFF; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+  }
+  .avatar-edit:active{ transform:scale(.88); }
+  .pc-name{ font-size:19px; font-weight:800; color:var(--ink); }
+  .pc-actions{ display:flex; gap:6px; }
+  .pc-link{ border:0; background:none; font-family:var(--sans); font-size:13px; font-weight:700; color:var(--in); padding:6px 10px; border-radius:10px; cursor:pointer; }
+  .pc-link.danger{ color:var(--out); }
+  .pc-link:active{ background:var(--paper-dim); }
 
   /* ===== Bottom nav melayang (pil) ===== */
   .tabbar{
@@ -286,8 +378,8 @@
   .chip.selected{ background:var(--in); color:#FFFFFF; border-color:var(--in); }
 
   @media (prefers-reduced-motion: reduce){
-    .big-card, .tab-btn, .tab-btn svg, .fab, .source-opt, .chip{ transition:none !important; animation:none !important; }
-    .big-card:active, .tab-btn:active, .fab:active, .source-opt:active, .chip:active{ transform:none !important; }
+    .stat-tile, .wide-card, .range-btn, .range-menu, .ch-bar, .ch-tip, .avatar, .round-btn, .tab-btn, .tab-btn svg, .fab, .source-opt, .chip{ transition:none !important; animation:none !important; }
+    .stat-tile:active, .wide-card:active, .tab-btn:active, .fab:active, .source-opt:active, .chip:active{ transform:none !important; }
   }
 
   .amount-input-wrap{ position:relative; margin-bottom:18px; }
@@ -446,7 +538,7 @@
   .toast{
     position:fixed; bottom:116px; left:50%; transform:translateX(-50%) translateY(20px) scale(0.92);
     background:linear-gradient(135deg, #0F766E 0%, #0B2B29 100%); color:#FFFFFF; padding:12px 20px; border-radius:14px; font-size:13.5px; font-weight:600;
-    opacity:0; transition:opacity 0.25s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1); pointer-events:none; z-index:100; max-width:80%; text-align:center;
+    opacity:0; transition:opacity 0.25s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1); pointer-events:none; z-index:100; width:max-content; max-width:calc(100% - 40px); text-align:center;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
   @media (prefers-reduced-motion: reduce){ .toast{ transition:opacity 0.15s ease !important; transform:translateX(-50%) !important; } }
@@ -639,36 +731,50 @@
 
   <!-- ===================== HOME ===================== -->
   <section class="screen" id="screen-home">
-    <div class="balance-strip" style="margin-top:22px;">
-      <div><div class="lbl">TOTAL SALDO</div></div>
-      <div class="val" id="home-total-balance">Rp0</div>
-    </div>
-    <div class="home-cards">
-      <button class="big-card in" onclick="openTxModal('in')">
-        <div class="card-top-row">
-          <div class="card-label">
-            <span class="icn-circle"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            Pemasukan
+    <div class="home-wrap">
+      <div class="home-bar">
+        <button class="avatar" id="home-avatar" onclick="switchTab('settings')" aria-label="Profil"></button>
+        <div class="home-hello"><small>Halo,</small><b id="home-name">-</b></div>
+        <button class="round-btn" onclick="switchTab('settings')" aria-label="Pengaturan"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>
+
+      <div class="home-titlerow">
+        <h1 class="home-title">Ringkasan<br>Keuangan</h1>
+        <div class="range-wrap" id="range-wrap">
+          <button class="range-btn" onclick="toggleRangeMenu(event)"><span id="range-label">Mingguan</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="range-menu">
+            <button id="range-opt-week" class="sel" onclick="setHomeRange('week')">Mingguan</button>
+            <button id="range-opt-month" onclick="setHomeRange('month')">Bulanan</button>
           </div>
-          <span class="card-pct" id="pct-in">0%</span>
         </div>
-        <div>
-          <div class="card-amount" id="total-in">Rp0</div>
-          <div class="card-sub">hari ini · ketuk untuk tambah</div>
-        </div>
-      </button>
-      <button class="big-card out" onclick="openTxModal('out')">
-        <div class="card-top-row">
-          <div class="card-label">
-            <span class="icn-circle"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            Pengeluaran
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-legend"><span><i class="dot in"></i>Pemasukan</span><span><i class="dot out"></i>Pengeluaran</span></div>
+        <div class="chart-area" id="home-chart"></div>
+      </div>
+
+      <div class="tile-row">
+        <button class="stat-tile in" onclick="openTxModal('in')">
+          <div class="st-top">
+            <span class="st-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="st-plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span>
           </div>
-          <span class="card-pct" id="pct-out">0%</span>
-        </div>
-        <div>
-          <div class="card-amount" id="total-out">Rp0</div>
-          <div class="card-sub">hari ini · ketuk untuk catat beli</div>
-        </div>
+          <div><span class="st-label">Masuk hari ini</span><span class="st-amt" id="total-in">Rp0</span></div>
+        </button>
+        <button class="stat-tile out" onclick="openTxModal('out')">
+          <div class="st-top">
+            <span class="st-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="st-plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span>
+          </div>
+          <div><span class="st-label">Keluar hari ini</span><span class="st-amt" id="total-out">Rp0</span></div>
+        </button>
+      </div>
+
+      <button class="wide-card" onclick="switchTab('wallets')">
+        <span class="wide-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="14" rx="3.5" stroke="currentColor" stroke-width="1.9"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.9"/><path d="M6 15h4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span>
+        <span class="wide-body"><small>Total saldo</small><b id="home-total-balance">Rp0</b></span>
+        <svg class="wide-chev" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
     <div class="tabbar">
@@ -796,6 +902,18 @@
       <div></div>
     </div>
     <div class="content" style="flex:1;">
+      <div class="profile-card">
+        <div class="avatar-wrap">
+          <div class="avatar big" id="set-avatar"></div>
+          <button class="avatar-edit" onclick="pickProfilePhoto()" aria-label="Ubah foto profil"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A2.5 2.5 0 016.5 6h1.2a1 1 0 00.9-.55l.6-1.1A1 1 0 019.1 4h5.8a1 1 0 01.9.55l.6 1.1a1 1 0 00.9.55h1.2A2.5 2.5 0 0120 8.5v8A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5v-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.2" stroke="currentColor" stroke-width="1.9"/></svg></button>
+        </div>
+        <div class="pc-name" id="set-name-big">-</div>
+        <div class="pc-actions">
+          <button class="pc-link" onclick="pickProfilePhoto()">Ubah foto</button>
+          <button class="pc-link danger" id="btn-del-photo" onclick="removeProfilePhoto()" style="display:none;">Hapus foto</button>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="handlePhotoFile(event)">
+      </div>
       <div class="settings-list">
         <div class="settings-row"><span class="srl">Nama akun</span><span class="srv" id="set-username">-</span></div>
         <div class="settings-row"><span class="srl">Jenis penghasilan</span><span class="srv" id="set-incometype">-</span></div>
