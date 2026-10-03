@@ -302,8 +302,8 @@
   .pc-link.danger{ color:var(--out); }
   .pc-link:active{ background:var(--paper-dim); }
 
-  /* ================= Konten Beranda: Berita & Buku ================= */
-  #cx-news, #cx-books{ display:block; }
+  /* ================= Konten Beranda: Buku PDF ================= */
+  #cx-books{ display:block; }
   .cx-noanim *{ animation:none !important; }
   .cx-head{ margin:18px 2px 6px; }
   .cx-head small{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:1px; }
@@ -315,50 +315,30 @@
   }
   .cx-swipe svg{ animation:swipeHint 1.4s ease-in-out infinite; }
   @keyframes swipeHint{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(4px); } }
-  .cx-sub{ display:flex; align-items:center; gap:2px; margin:6px 2px 0; font-size:16px; font-weight:800; color:var(--ink); }
   .cx-row{
     display:flex; gap:12px; overflow-x:auto; margin:0 -20px; padding:8px 20px 16px; scroll-padding:0 20px;
     scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; scrollbar-width:none; overscroll-behavior-x:contain;
   }
   .cx-row::-webkit-scrollbar{ display:none; }
   .cx-row > *{ scroll-snap-align:start; flex-shrink:0; }
-  .cx-img{ position:relative; overflow:hidden; background:var(--paper-dim); }
-  .cx-img img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  .cx-fb{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.9); font-size:44px; font-weight:800; }
-  .cx-img.wide{ aspect-ratio:16/10; border-radius:17px; }
-  .cx-img.sq{ aspect-ratio:4/3; border-radius:15px; }
-  .cx-news-big, .cx-news-small{
-    background:var(--white); border-radius:22px; padding:8px 8px 12px; box-shadow:var(--shadow); cursor:pointer;
-    -webkit-tap-highlight-color:transparent; animation:riseIn .45s cubic-bezier(.2,.8,.2,1) backwards;
-    transition:transform .18s cubic-bezier(.34,1.56,.64,1);
-  }
-  .cx-news-big:active, .cx-news-small:active{ transform:scale(.97); }
-  .cx-news-big{ width:min(300px, 80vw); }
-  .cx-news-small{ width:152px; }
-  .cx-meta{ margin:11px 6px 0; }
-  .cx-src{ font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--in-deep); }
-  .cx-title{ margin:4px 6px 0; font-size:16.5px; line-height:1.3; font-weight:800; color:var(--ink); letter-spacing:-0.2px;
-    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-  .cx-title.sm{ font-size:13.5px; -webkit-line-clamp:4; }
-  .cx-date{ margin:8px 6px 0; font-size:11.5px; color:var(--ink-soft); font-weight:600; }
-  .cx-skel{ width:min(300px, 80vw); height:250px; border-radius:22px; background:linear-gradient(100deg,#E6EEEC 30%,#F3F8F7 50%,#E6EEEC 70%); background-size:200% 100%; animation:shimmer 1.3s linear infinite; }
+  .cx-skel{ width:min(240px, 66vw); aspect-ratio:3/4; border-radius:22px; background:linear-gradient(100deg,#E6EEEC 30%,#F3F8F7 50%,#E6EEEC 70%); background-size:200% 100%; animation:shimmer 1.3s linear infinite; }
   @keyframes shimmer{ to{ background-position:-200% 0; } }
   .cx-note{ margin-top:18px; padding:14px 16px; border-radius:18px; background:var(--white); box-shadow:var(--shadow); font-size:13px; color:var(--ink-soft); font-weight:600; line-height:1.5; }
   .cx-note button{ border:0; background:none; color:var(--in); font-weight:800; font-family:var(--sans); font-size:13px; padding:0; cursor:pointer; text-decoration:underline; }
 
-  .cx-book{ width:132px; cursor:pointer; -webkit-tap-highlight-color:transparent; animation:riseIn .45s cubic-bezier(.2,.8,.2,1) backwards; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
+  .cx-book{ width:min(240px, 66vw); cursor:pointer; -webkit-tap-highlight-color:transparent; animation:riseIn .45s cubic-bezier(.2,.8,.2,1) backwards; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
   .cx-book:active{ transform:scale(.96); }
-  .cx-cover{ position:relative; aspect-ratio:3/4; border-radius:15px; overflow:hidden; box-shadow:0 16px 24px -14px rgba(8,32,30,.55); }
+  .cx-cover{ position:relative; aspect-ratio:3/4; border-radius:22px; overflow:hidden; box-shadow:0 20px 30px -16px rgba(8,32,30,.6); }
   .cx-cover img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  .cx-cover-t{ position:absolute; left:12px; right:12px; bottom:12px; color:#fff; font-size:15px; font-weight:800; line-height:1.2; text-shadow:0 2px 8px rgba(0,0,0,.25); }
-  .cx-pdf-tag{ position:absolute; top:9px; right:9px; background:rgba(255,255,255,.92); color:var(--ink); font-size:9.5px; font-weight:800; letter-spacing:.5px; padding:3px 7px; border-radius:8px; }
-  .cx-btitle{ margin-top:10px; font-size:13px; font-weight:800; color:var(--ink); line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .cx-bauthor{ margin-top:2px; font-size:11.5px; font-weight:600; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .cx-prog{ margin-top:7px; height:4px; border-radius:99px; background:var(--paper-dim); overflow:hidden; }
+  .cx-cover-t{ position:absolute; left:18px; right:18px; bottom:18px; color:#fff; font-size:22px; font-weight:800; line-height:1.2; text-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .cx-pdf-tag{ position:absolute; top:12px; right:12px; background:rgba(255,255,255,.92); color:var(--ink); font-size:11px; font-weight:800; letter-spacing:.5px; padding:4px 9px; border-radius:9px; }
+  .cx-btitle{ margin-top:14px; font-size:17px; font-weight:800; color:var(--ink); line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .cx-bauthor{ margin-top:3px; font-size:13.5px; font-weight:600; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cx-prog{ margin-top:10px; height:5px; border-radius:99px; background:var(--paper-dim); overflow:hidden; }
   .cx-prog i{ display:block; height:100%; border-radius:99px; background:var(--in); }
-  .cx-prog-t{ margin-top:4px; font-size:10.5px; font-weight:700; color:var(--in-deep); }
+  .cx-prog-t{ margin-top:5px; font-size:12px; font-weight:700; color:var(--in-deep); }
 
-  /* ---- Halaman penuh (berita & pembaca PDF) ---- */
+  /* ---- Halaman penuh (pembaca PDF) ---- */
   .ov{
     position:fixed; inset:0; z-index:60; display:none; flex-direction:column; background:var(--paper);
     transform:translateY(100%); transition:transform .38s cubic-bezier(.2,.8,.2,1); will-change:transform;
@@ -377,14 +357,6 @@
   .ov-titles{ flex:1; min-width:0; line-height:1.2; }
   .ov-titles b{ display:block; font-size:15px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ov-titles small{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-top:1px; }
-  #nv-scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:calc(30px + env(safe-area-inset-bottom)); }
-  .nv-hero{ margin:14px 16px 0; aspect-ratio:16/10; border-radius:24px; overflow:hidden; background:var(--paper-dim); }
-  .nv-hero img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .nv-body{ padding:18px 20px 0; }
-  .nv-meta{ display:flex; align-items:center; gap:10px; font-size:12px; font-weight:600; color:var(--ink-soft); }
-  .nv-body h1{ margin:8px 0 16px; font-size:26px; line-height:1.2; letter-spacing:-0.6px; font-weight:800; color:var(--ink); }
-  .nv-body p{ margin:0 0 15px; font-size:16px; line-height:1.7; color:#27413E; }
-  .nv-link{ display:inline-flex; align-items:center; gap:4px; margin-top:6px; padding:13px 20px; border-radius:999px; background:#0B2B29; color:#fff; font-weight:700; font-size:14px; text-decoration:none; }
 
   .rd-zoom{ display:flex; align-items:center; gap:4px; flex-shrink:0; }
   .rd-zoom button{ width:36px; height:36px; border-radius:50%; border:0; background:var(--paper-dim); color:var(--ink); font-size:20px; font-weight:700; line-height:1; cursor:pointer; font-family:var(--sans); }
@@ -882,7 +854,6 @@
         <svg class="wide-chev" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
 
-      <div id="cx-news"></div>
       <div id="cx-books"></div>
     </div>
     <div class="tabbar">
@@ -1091,15 +1062,6 @@
 <div class="toast" id="toast"></div>
 
 <!-- jsPDF for receipt printing -->
-<!-- Halaman penuh: detail berita -->
-<div class="ov" id="news-view">
-  <div class="ov-bar">
-    <button class="ov-back" onclick="ovClose('news-view')" aria-label="Kembali"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div class="ov-titles"><b>Berita</b></div>
-  </div>
-  <div id="nv-scroll"></div>
-</div>
-
 <!-- Halaman penuh: pembaca buku PDF -->
 <div class="ov" id="reader-view">
   <div class="ov-bar">

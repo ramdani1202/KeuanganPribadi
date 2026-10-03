@@ -127,8 +127,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Konten Beranda (berita, gambar, daftar buku): NETWORK-FIRST supaya
-  // berita baru yang Anda upload ke GitHub langsung muncul. Jika offline,
+  // Konten Beranda (cover, daftar buku): NETWORK-FIRST supaya
+  // perubahan daftar buku di GitHub langsung muncul. Jika offline,
   // pakai salinan terakhir yang pernah dibuka.
   // PDF: cek server dulu, cache hanya cadangan offline (nama file yang sama
   // boleh diganti isinya).

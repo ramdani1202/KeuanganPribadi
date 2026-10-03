@@ -1,18 +1,13 @@
 /* =========================================================
-   KONTEN BERANDA: Berita & Buku PDF
+   KONTEN BERANDA: Buku PDF
    Semua isi diunggah lewat GitHub (tanpa server):
-     content/news.json   -> daftar berita
      content/books.json  -> daftar buku PDF
-   Gambar & PDF disimpan di content/news/ dan content/books/
+   Cover & PDF disimpan di content/books/
    ========================================================= */
-const CX_NEWS_URL = 'content/news.json';
 const CX_BOOKS_URL = 'content/books.json';
-const CX_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-const CX_MONTHS_FULL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const CX_DAYS_FULL = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 const CX_COVER_COLORS = [['#14B8A6','#0A6E64'],['#E9776A','#B23F33'],['#4F81E6','#2846AA'],['#F0AA3C','#C86E1E'],['#8E5CF0','#5032AA']];
 
-let cx = { news:null, books:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
+let cx = { books:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
 
 /* ---------- Pembersih data JSON (jangan percaya isi file mentah) ---------- */
 function cxStr(v, max){ return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').slice(0, max); }
@@ -25,34 +20,8 @@ function cxSafeUrl(u){
   return '';
 }
 function cxHref(u){ try{ return encodeURI(decodeURI(u)); }catch(_){ return encodeURI(u); } } // aman untuk atribut src/href
-function cxDate(s){
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
-  if(!m) return '';
-  const mo = Number(m[2]) - 1;
-  if(mo < 0 || mo > 11) return '';
-  return `${Number(m[3])} ${CX_MONTHS[mo]} ${m[1]}`;
-}
 function cxId(v, i, prefix){ const s = String(v == null ? '' : v); return /^[A-Za-z0-9_-]{1,40}$/.test(s) ? s : prefix + i; }
 
-function cxSanitizeNews(list){
-  if(!Array.isArray(list)) return [];
-  const out = [];
-  list.slice(0, 60).forEach((n, i) => {
-    if(!n || typeof n !== 'object') return;
-    const title = cxStr(n.title, 200).trim();
-    if(!title) return;
-    let body = [];
-    if(Array.isArray(n.body)) body = n.body.map(p => cxStr(p, 4000).trim()).filter(Boolean);
-    else if(typeof n.body === 'string') body = n.body.split(/\n{2,}/).map(p => cxStr(p, 4000).trim()).filter(Boolean);
-    const link = typeof n.link === 'string' && /^https:\/\/[^\s"'<>]+$/i.test(n.link.trim()) ? n.link.trim() : '';
-    out.push({
-      id: cxId(n.id, i, 'n'), title, source: cxStr(n.source, 40).trim() || 'Berita',
-      date: cxDate(n.date), image: cxSafeUrl(n.image), summary: cxStr(n.summary, 300).trim(),
-      body: body.slice(0, 80), link
-    });
-  });
-  return out;
-}
 function cxSanitizeBooks(list){
   if(!Array.isArray(list)) return [];
   const out = [];
@@ -80,10 +49,13 @@ async function loadHomeContent(force){
   }
   cx.loading = true;
   if(!cx.loadedAt) renderHomeContent(true);
-  const [n, b] = await Promise.allSettled([cxFetchJSON(CX_NEWS_URL), cxFetchJSON(CX_BOOKS_URL)]);
-  if(n.status === 'fulfilled') cx.news = cxSanitizeNews(n.value && n.value.news);
-  if(b.status === 'fulfilled') cx.books = cxSanitizeBooks(b.value && b.value.books);
-  cx.failed = n.status === 'rejected' && b.status === 'rejected' && !cx.news && !cx.books;
+  try{
+    const j = await cxFetchJSON(CX_BOOKS_URL);
+    cx.books = cxSanitizeBooks(j && j.books);
+    cx.failed = false;
+  }catch(_){
+    cx.failed = !cx.books;
+  }
   cx.loadedAt = Date.now();
   cx.loading = false;
   renderHomeContent(false);
@@ -91,30 +63,6 @@ async function loadHomeContent(force){
 
 /* ---------- Tampilan Beranda ---------- */
 const CX_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-function cxImgHTML(src, cls, fallbackText, i){
-  const [c1, c2] = CX_COVER_COLORS[i % CX_COVER_COLORS.length];
-  const fb = `<span class="cx-fb" style="background:linear-gradient(135deg,${c1},${c2})">${escapeHtml((fallbackText || '?').trim().charAt(0).toUpperCase())}</span>`;
-  if(!src) return `<div class="${cls}">${fb}</div>`;
-  return `<div class="${cls}">${fb}<img src="${escapeHtml(cxHref(src))}" alt="" loading="lazy" onerror="this.remove()"></div>`;
-}
-
-function cxNewsBigCard(n, i){
-  return `<article class="cx-news-big" style="animation-delay:${i*60}ms" onclick="openNews(${i})">
-    ${cxImgHTML(n.image, 'cx-img wide', n.source, i)}
-    <div class="cx-meta"><span class="cx-src">${escapeHtml(n.source)}</span></div>
-    <h3 class="cx-title">${escapeHtml(n.title)}</h3>
-    <div class="cx-date">${escapeHtml(n.date)}</div>
-  </article>`;
-}
-function cxNewsSmallCard(n, i, idx){
-  return `<article class="cx-news-small" style="animation-delay:${idx*50}ms" onclick="openNews(${i})">
-    ${cxImgHTML(n.image, 'cx-img sq', n.source, i)}
-    <div class="cx-meta"><span class="cx-src">${escapeHtml(n.source)}</span></div>
-    <h3 class="cx-title sm">${escapeHtml(n.title)}</h3>
-    <div class="cx-date">${escapeHtml(n.date)}</div>
-  </article>`;
-}
 
 function cxReadInfo(id){
   try{
@@ -143,49 +91,27 @@ function cxBookCard(b, i){
 }
 
 function renderHomeContent(loadingOnly){
-  const newsEl = document.getElementById('cx-news');
   const booksEl = document.getElementById('cx-books');
-  if(!newsEl || !booksEl) return;
+  if(!booksEl) return;
   cx.user = (typeof currentUser !== 'undefined') ? currentUser : null;
 
-  // simpan posisi geser tiap baris supaya tidak melompat ke awal saat digambar ulang
-  const keep = Array.from(document.querySelectorAll('#cx-news .cx-row, #cx-books .cx-row')).map(r => r.scrollLeft);
-  const restore = () => document.querySelectorAll('#cx-news .cx-row, #cx-books .cx-row').forEach((r, i) => { if(keep[i]) r.scrollLeft = keep[i]; });
-  newsEl.classList.toggle('cx-noanim', cx.drawn);
+  // simpan posisi geser baris supaya tidak melompat ke awal saat digambar ulang
+  const keep = Array.from(document.querySelectorAll('#cx-books .cx-row')).map(r => r.scrollLeft);
+  const restore = () => document.querySelectorAll('#cx-books .cx-row').forEach((r, i) => { if(keep[i]) r.scrollLeft = keep[i]; });
   booksEl.classList.toggle('cx-noanim', cx.drawn);
 
   if(loadingOnly){
     const sk = '<div class="cx-skel"></div>';
-    newsEl.innerHTML = `<div class="cx-head"><small>&nbsp;</small><h2>Berita</h2></div><div class="cx-row">${sk}${sk}</div>`;
-    booksEl.innerHTML = '';
+    booksEl.innerHTML = `<div class="cx-head"><small>&nbsp;</small><h2>Buku PDF</h2></div><div class="cx-row">${sk}${sk}</div>`;
     return;
   }
 
   if(cx.failed){
-    newsEl.innerHTML = `<div class="cx-note">Berita &amp; buku belum bisa dimuat. Periksa koneksi internet, lalu <button onclick="loadHomeContent(true)">coba lagi</button>.</div>`;
-    booksEl.innerHTML = '';
+    booksEl.innerHTML = `<div class="cx-note">Buku belum bisa dimuat. Periksa koneksi internet, lalu <button onclick="loadHomeContent(true)">coba lagi</button>.</div>`;
     cx.drawn = true;
     return;
   }
 
-  // ----- Berita -----
-  if(cx.news && cx.news.length){
-    const d = new Date();
-    const dateLine = `${CX_DAYS_FULL[d.getDay()]}, ${d.getDate()} ${CX_MONTHS_FULL[d.getMonth()]}`;
-    const feat = cx.news.slice(0, 3);
-    const rest = cx.news.slice(3);
-    let html = `<div class="cx-head"><small>${dateLine}</small><h2>Berita</h2></div>
-      <div class="cx-row">${feat.map((n, i) => cxNewsBigCard(n, i)).join('')}</div>`;
-    if(rest.length){
-      html += `<div class="cx-sub">Berita lainnya ${CX_CHEV}</div>
-      <div class="cx-row">${rest.map((n, k) => cxNewsSmallCard(n, k + 3, k)).join('')}</div>`;
-    }
-    newsEl.innerHTML = html;
-  } else {
-    newsEl.innerHTML = '';
-  }
-
-  // ----- Buku PDF -----
   if(cx.books && cx.books.length){
     booksEl.innerHTML = `<div class="cx-head row"><div><small>${cx.books.length} buku · baca langsung</small><h2>Buku PDF</h2></div><span class="cx-swipe">Geser ${CX_CHEV}</span></div>
       <div class="cx-row books">${cx.books.map((b, i) => cxBookCard(b, i)).join('')}</div>`;
@@ -196,7 +122,7 @@ function renderHomeContent(loadingOnly){
   restore();
 }
 
-/* ---------- Overlay (berita & pembaca) + tombol Kembali Android ---------- */
+/* ---------- Overlay (pembaca) + tombol Kembali Android ---------- */
 const ovStack = [];
 let ovHistoryOk = true;
 function ovOpen(id){
@@ -225,25 +151,6 @@ window.addEventListener('popstate', () => {
   const top = ovStack.pop();
   if(top) ovHide(top);
 });
-
-/* ---------- Detail berita ---------- */
-function openNews(i){
-  const n = cx.news && cx.news[i];
-  if(!n) return;
-  const hero = n.image
-    ? `<div class="nv-hero"><img src="${escapeHtml(cxHref(n.image))}" alt="" onerror="this.parentNode.remove()"></div>`
-    : '';
-  const body = (n.body.length ? n.body : (n.summary ? [n.summary] : [])).map(p => `<p>${escapeHtml(p)}</p>`).join('');
-  const link = n.link ? `<a class="nv-link" href="${escapeHtml(n.link)}" target="_blank" rel="noopener noreferrer">Baca selengkapnya ${CX_CHEV}</a>` : '';
-  document.getElementById('nv-scroll').innerHTML = `${hero}
-    <div class="nv-body">
-      <div class="nv-meta"><span class="cx-src">${escapeHtml(n.source)}</span>${n.date ? `<span>${escapeHtml(n.date)}</span>` : ''}</div>
-      <h1>${escapeHtml(n.title)}</h1>
-      ${body}${link}
-    </div>`;
-  document.getElementById('nv-scroll').scrollTop = 0;
-  ovOpen('news-view');
-}
 
 /* ---------- Pembaca PDF (pdf.js, disertakan di folder lib/) ---------- */
 let pdfjs = null;
