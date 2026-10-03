@@ -1,13 +1,14 @@
 /* =========================================================
-   KONTEN BERANDA: Buku PDF
-   Semua isi diunggah lewat GitHub (tanpa server):
-     content/books.json  -> daftar buku PDF
-   Cover & PDF disimpan di content/books/
+   KONTEN BERANDA: Video YouTube
+   Daftar video Anda unggah lewat GitHub (tanpa server):
+     content/videos.json  -> daftar link video YouTube
+   Thumbnail otomatis dari YouTube. Video hanya tampil
+   (diputar) saat perangkat online.
    ========================================================= */
-const CX_BOOKS_URL = 'content/books.json';
+const CX_URL = 'content/videos.json';
 const CX_COVER_COLORS = [['#14B8A6','#0A6E64'],['#E9776A','#B23F33'],['#4F81E6','#2846AA'],['#F0AA3C','#C86E1E'],['#8E5CF0','#5032AA']];
 
-let cx = { tab:'all', libTab:'all', detail:null, libOpen:false, books:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
+let cx = { tab:'all', libTab:'all', detail:null, libOpen:false, rateOpen:false, videos:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
 
 /* ---------- Pembersih data JSON (jangan percaya isi file mentah) ---------- */
 function cxStr(v, max){ return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').slice(0, max); }
@@ -20,19 +21,67 @@ function cxSafeUrl(u){
   return '';
 }
 function cxHref(u){ try{ return encodeURI(decodeURI(u)); }catch(_){ return encodeURI(u); } } // aman untuk atribut src/href
-function cxId(v, i, prefix){ const s = String(v == null ? '' : v); return /^[A-Za-z0-9_-]{1,40}$/.test(s) ? s : prefix + i; }
 
-function cxSanitizeBooks(list){
+/* Ambil ID video dari berbagai bentuk link YouTube (atau ID 11 karakter langsung) */
+function cxYtId(u){
+  if(typeof u !== 'string') return '';
+  u = u.trim();
+  if(/^[A-Za-z0-9_-]{11}$/.test(u)) return u;
+  let url;
+  try{ url = new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u); }catch(_){ return ''; }
+  const host = url.hostname.toLowerCase().replace(/^(www\.|m\.|music\.)/, '');
+  let id = '';
+  if(host === 'youtu.be') id = url.pathname.split('/')[1] || '';
+  else if(host === 'youtube.com' || host === 'youtube-nocookie.com'){
+    if(url.pathname === '/watch') id = url.searchParams.get('v') || '';
+    else { const m = url.pathname.match(/^\/(embed|shorts|live|v)\/([^/?#]+)/); if(m) id = m[2]; }
+  }
+  return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : '';
+}
+
+function cxMetaCache(id){
+  try{ const c = JSON.parse(localStorage.getItem('cu_ytm_' + id) || 'null'); if(c && typeof c === 'object') return c; }catch(_){}
+  return null;
+}
+function cxSanitize(list){
   if(!Array.isArray(list)) return [];
-  const out = [];
-  list.slice(0, 60).forEach((b, i) => {
-    if(!b || typeof b !== 'object') return;
-    const title = cxStr(b.title, 120).trim();
-    const file = cxSafeUrl(b.file);
-    if(!title || !file || !/\.pdf$/i.test(file.split('?')[0])) return;
-    out.push({ id: cxId(b.id, i, 'b'), title, author: cxStr(b.author, 80).trim(), cover: cxSafeUrl(b.cover), file, desc: cxStr(b.desc, 600).trim(), category: cxStr(b.category, 24).trim() });
+  const out = [], seen = new Set();
+  list.slice(0, 80).forEach((v) => {
+    if(!v || typeof v !== 'object') return;
+    const id = cxYtId(v.url || v.link || v.id);
+    if(!id || seen.has(id)) return;
+    seen.add(id);
+    const m = cxMetaCache(id) || {};
+    out.push({
+      id,
+      title: cxStr(v.title, 120).trim() || cxStr(m.t, 120),
+      author: cxStr(v.author || v.channel, 80).trim() || cxStr(m.a, 80),
+      category: cxStr(v.category, 24).trim(),
+      desc: cxStr(v.desc, 600).trim(),
+      thumb: cxSafeUrl(v.thumb || v.thumbnail)
+    });
   });
   return out;
+}
+const cxTitle = (v) => v.title || 'YouTube video';
+
+/* Judul/channel otomatis dari YouTube bila tidak ditulis di JSON (best effort, saat online) */
+async function cxFillMeta(){
+  if(!cx.videos || !navigator.onLine) return;
+  let changed = false;
+  for(const v of cx.videos.slice(0, 30)){
+    if(v.title && v.author) continue;
+    try{
+      const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + v.id));
+      if(!r.ok) continue;
+      const j = await r.json();
+      const t = cxStr(j.title, 120).trim(), a = cxStr(j.author_name, 80).trim();
+      if(!v.title && t){ v.title = t; changed = true; }
+      if(!v.author && a){ v.author = a; changed = true; }
+      try{ localStorage.setItem('cu_ytm_' + v.id, JSON.stringify({ t, a })); }catch(_){}
+    }catch(_){}
+  }
+  if(changed) cxRefreshOpen();
 }
 
 /* ---------- Ambil data ---------- */
@@ -44,21 +93,22 @@ async function cxFetchJSON(url){
 async function loadHomeContent(force){
   if(cx.loading) return;
   if(!force && cx.loadedAt && Date.now() - cx.loadedAt < 60000){
-    if(cx.user !== currentUser) renderHomeContent(false); // ganti akun -> bar progres baca ikut berganti
+    if(cx.user !== currentUser) renderHomeContent(false); // ganti akun -> progres tonton ikut berganti
     return;
   }
   cx.loading = true;
   if(!cx.loadedAt) renderHomeContent(true);
   try{
-    const j = await cxFetchJSON(CX_BOOKS_URL);
-    cx.books = cxSanitizeBooks(j && j.books);
+    const j = await cxFetchJSON(CX_URL);
+    cx.videos = cxSanitize(j && j.videos);
     cx.failed = false;
   }catch(_){
-    cx.failed = !cx.books;
+    cx.failed = !cx.videos;
   }
   cx.loadedAt = Date.now();
   cx.loading = false;
   renderHomeContent(false);
+  cxFillMeta();
 }
 
 /* ---------- Tampilan Beranda ---------- */
@@ -66,20 +116,27 @@ const CX_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><pa
 const CX_SEARCH = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
 const CX_BM = (on) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}"><path d="M6.5 4.5h11a1 1 0 011 1V20l-6.5-4-6.5 4V5.5a1 1 0 011-1z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
 const CX_PLAY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>';
-const CX_TABS = [['all','Semua'],['fav','Favorit'],['unread','Belum dibaca']];
-const CX_LIB_TABS = [['all','Semua'],['fav','Favorit'],['reading','Sedang dibaca'],['unread','Belum dibaca'],['done','Selesai']];
+const CX_STAR = (on) => `<svg width="30" height="30" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+const CX_TABS = [['all','All'],['fav','My List'],['unread','Unwatched']];
+const CX_LIB_TABS = [['all','All'],['fav','My List'],['reading','Watching'],['unread','Unwatched'],['done','Finished']];
 
-function cxReadInfo(id){
+/* ----- Progres tonton (per akun) ----- */
+function cxWatch(id){
   try{
-    const v = JSON.parse(localStorage.getItem(`cu_read_${currentUser}_${id}`) || 'null');
-    if(v && v.p > 0 && v.n > 0) return v;
+    const v = JSON.parse(localStorage.getItem(`cu_watch_${currentUser}_${id}`) || 'null');
+    if(v && v.t >= 3 && v.d > 0) return v;
   }catch(_){}
   return null;
 }
-const cxDone = (info) => !!info && info.p >= info.n;
-const cxPct = (info) => info ? Math.min(100, Math.round(info.p / info.n * 100)) : 0;
+const cxDone = (info) => !!info && (info.done || info.t >= info.d - 8);
+const cxPct = (info) => info ? Math.max(1, Math.min(100, Math.round(info.t / info.d * 100))) : 0;
+function cxFmt(s){
+  s = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+}
 
-/* ----- Favorit (per akun) ----- */
+/* ----- My List (per akun) ----- */
 function cxFavs(){
   try{ const a = JSON.parse(localStorage.getItem(`cu_fav_${currentUser}`) || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; }
   catch(_){ return []; }
@@ -90,13 +147,27 @@ function cxToggleFav(ev, id){
   const f = cxFavs(), k = f.indexOf(id);
   if(k === -1) f.push(id); else f.splice(k, 1);
   try{ localStorage.setItem(`cu_fav_${currentUser}`, JSON.stringify(f)); }catch(_){}
-  if(typeof showToast === 'function') showToast(k === -1 ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit');
+  if(typeof showToast === 'function') showToast(k === -1 ? 'Added to My List' : 'Removed from My List');
   cxRefreshOpen();
 }
 
-function cxMatch(b, tab){
-  const info = cxReadInfo(b.id);
-  if(tab === 'fav') return cxIsFav(b.id);
+/* ----- Rating bintang (per akun) ----- */
+function cxRates(){
+  try{ const o = JSON.parse(localStorage.getItem(`cu_rate_${currentUser}`) || '{}'); return o && typeof o === 'object' ? o : {}; }
+  catch(_){ return {}; }
+}
+const cxRate = (id) => { const n = Number(cxRates()[id]); return n >= 1 && n <= 5 ? n : 0; };
+function cxSetRate(id, n){
+  const o = cxRates();
+  if(o[id] === n) delete o[id]; else o[id] = n;
+  try{ localStorage.setItem(`cu_rate_${currentUser}`, JSON.stringify(o)); }catch(_){}
+  cxRefreshOpen();
+}
+const cxStars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+function cxMatch(v, tab){
+  const info = cxWatch(v.id);
+  if(tab === 'fav') return cxIsFav(v.id);
   if(tab === 'unread') return !info;
   if(tab === 'reading') return !!info && !cxDone(info);
   if(tab === 'done') return cxDone(info);
@@ -105,107 +176,115 @@ function cxMatch(b, tab){
 function cxFiltered(tab, q){
   q = (q || '').trim().toLowerCase();
   const out = [];
-  (cx.books || []).forEach((b, i) => {
-    if(!cxMatch(b, tab)) return;
-    if(q && !(`${b.title} ${b.author} ${b.category}`.toLowerCase().includes(q))) return;
-    out.push({ b, i });
+  (cx.videos || []).forEach((v, i) => {
+    if(!cxMatch(v, tab)) return;
+    if(q && !(`${v.title} ${v.author} ${v.category}`.toLowerCase().includes(q))) return;
+    out.push({ v, i });
   });
   return out;
 }
 
 /* ----- Potongan tampilan ----- */
-function cxCover(b, i, cls){
+function cxThumbErr(img){
+  if(!img.dataset.f && !img.dataset.custom){
+    img.dataset.f = '1';
+    img.src = `https://i.ytimg.com/vi/${img.dataset.id}/hqdefault.jpg`;
+    img.classList.add('hq'); // hqdefault punya bar hitam atas-bawah; diperbesar sedikit supaya tertutup
+  } else img.remove();
+}
+function cxThumbSrc(v){ return v.thumb ? cxHref(v.thumb) : `https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg`; }
+function cxCover(v, i, cls){
   const [c1, c2] = CX_COVER_COLORS[i % CX_COVER_COLORS.length];
-  const img = b.cover ? `<img src="${escapeHtml(cxHref(b.cover))}" alt="" loading="lazy" onerror="this.remove()">` : '';
-  return `<div class="${cls}" style="background:linear-gradient(145deg,${c1},${c2})"><span class="bk-cov-fb">${escapeHtml(b.title)}</span>${img}</div>`;
+  return `<div class="${cls}" style="background:linear-gradient(145deg,${c1},${c2})"><span class="bk-cov-fb">${escapeHtml(cxTitle(v))}</span><img src="${escapeHtml(cxThumbSrc(v))}" data-id="${v.id}"${v.thumb ? ' data-custom="1"' : ''} alt="" loading="lazy" referrerpolicy="no-referrer" onerror="cxThumbErr(this)"><i class="bk-pl"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></i></div>`;
 }
 function cxRing(pct){
   const c = 94.25;
   return `<svg class="bk-ring" width="40" height="40" viewBox="0 0 38 38"><circle cx="19" cy="19" r="15" fill="rgba(5,20,19,.45)" stroke="rgba(255,255,255,.28)" stroke-width="3.5"/><circle cx="19" cy="19" r="15" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${(c * (1 - pct / 100)).toFixed(2)}" transform="rotate(-90 19 19)"/><text x="19" y="22.6" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="800" font-family="inherit">${pct}</text></svg>`;
 }
 function cxStatus(info){
-  if(!info) return 'Belum dibaca';
-  return cxDone(info) ? 'Selesai dibaca' : `Hal. ${info.p} dari ${info.n}`;
+  if(!info) return 'Unwatched';
+  return cxDone(info) ? 'Finished' : `${cxFmt(info.t)} / ${cxFmt(info.d)}`;
 }
 
-function cxContinueCard(b, i, k){
-  const info = cxReadInfo(b.id);
-  return `<div class="bk-cc" style="animation-delay:${k*60}ms" onclick="showBook(${i})">
-    ${cxCover(b, i, 'bk-cc-cov')}
+function cxContinueCard(v, i, k){
+  const info = cxWatch(v.id);
+  return `<div class="bk-cc" style="animation-delay:${k*60}ms" onclick="showVideo(${i})">
+    ${cxCover(v, i, 'bk-cc-cov')}
     <div class="bk-shade"></div>
     ${cxRing(cxPct(info))}
-    <div class="bk-cc-t"><b>${escapeHtml(b.title)}</b><small>${b.author ? escapeHtml(b.author) : 'PDF'}</small></div>
+    <div class="bk-cc-t"><b>${escapeHtml(cxTitle(v))}</b><small>${v.author ? escapeHtml(v.author) : 'YouTube'}</small></div>
   </div>`;
 }
 
-function cxListRow(b, i, k){
-  const info = cxReadInfo(b.id), fav = cxIsFav(b.id);
-  return `<div class="bk-item" style="animation-delay:${k*45}ms" onclick="showBook(${i})">
-    ${cxCover(b, i, 'bk-thumb')}
+function cxListRow(v, i, k){
+  const info = cxWatch(v.id), fav = cxIsFav(v.id), rate = cxRate(v.id);
+  return `<div class="bk-item" style="animation-delay:${k*45}ms" onclick="showVideo(${i})">
+    ${cxCover(v, i, 'bk-thumb')}
     <div class="bk-info">
-      <div class="bk-t">${escapeHtml(b.title)}</div>
-      <div class="bk-a">${b.author ? escapeHtml(b.author) : '&nbsp;'}</div>
-      <div class="bk-meta"><span>${cxStatus(info)}</span>${b.category ? `<span class="bk-chip">${escapeHtml(b.category)}</span>` : ''}</div>
+      <div class="bk-t">${escapeHtml(cxTitle(v))}</div>
+      <div class="bk-a">${v.author ? escapeHtml(v.author) : 'YouTube'}</div>
+      ${rate ? `<div class="bk-stars">${cxStars(rate)}</div>` : ''}
+      <div class="bk-meta"><span>${cxStatus(info)}</span>${v.category ? `<span class="bk-chip">${escapeHtml(v.category)}</span>` : ''}</div>
       ${info && !cxDone(info) ? `<div class="bk-mini"><i style="width:${cxPct(info)}%"></i></div>` : ''}
     </div>
-    <button class="bk-bm${fav ? ' on' : ''}" onclick="cxToggleFav(event,'${b.id}')" aria-label="Favorit">${CX_BM(fav)}</button>
+    <button class="bk-bm${fav ? ' on' : ''}" onclick="cxToggleFav(event,'${v.id}')" aria-label="My List">${CX_BM(fav)}</button>
   </div>`;
 }
 
 function cxSetTab(t){ cx.tab = t; renderHomeContent(false); }
 
 function renderHomeContent(loadingOnly){
-  const booksEl = document.getElementById('cx-books');
-  if(!booksEl) return;
+  const el = document.getElementById('cx-books');
+  if(!el) return;
   cx.user = (typeof currentUser !== 'undefined') ? currentUser : null;
 
   // simpan posisi geser baris supaya tidak melompat ke awal saat digambar ulang
   const keep = Array.from(document.querySelectorAll('#cx-books .cx-row')).map(r => r.scrollLeft);
   const restore = () => document.querySelectorAll('#cx-books .cx-row').forEach((r, i) => { if(keep[i]) r.scrollLeft = keep[i]; });
-  booksEl.classList.toggle('cx-noanim', cx.drawn);
+  el.classList.toggle('cx-noanim', cx.drawn);
 
   if(loadingOnly){
     const sk = '<div class="cx-skel"></div>';
-    booksEl.innerHTML = `<div class="bk-top"><div><small>&nbsp;</small><h2>Buku PDF</h2></div></div>${sk}${sk}${sk}`;
+    el.innerHTML = `<div class="bk-top"><div><small>&nbsp;</small><h2>Videos</h2></div></div>${sk}${sk}${sk}`;
     return;
   }
 
   if(cx.failed){
-    booksEl.innerHTML = `<div class="cx-note">Buku belum bisa dimuat. Periksa koneksi internet, lalu <button onclick="loadHomeContent(true)">coba lagi</button>.</div>`;
+    el.innerHTML = `<div class="cx-note">Videos couldn't be loaded. Check your internet connection, then <button onclick="loadHomeContent(true)">try again</button>.</div>`;
     cx.drawn = true;
     return;
   }
 
-  if(!(cx.books && cx.books.length)){ booksEl.innerHTML = ''; cx.drawn = true; return; }
+  if(!(cx.videos && cx.videos.length)){ el.innerHTML = ''; cx.drawn = true; return; }
 
-  const reading = cxFiltered('reading');
+  const watching = cxFiltered('reading');
   const all = cxFiltered(cx.tab);
   const shown = all.slice(0, 5);
 
-  let html = `<div class="bk-top"><div><small>${cx.books.length} buku · baca langsung</small><h2>Buku PDF</h2></div>
-    <button class="bk-iconbtn" onclick="openLibrary()" aria-label="Cari buku">${CX_SEARCH}</button></div>`;
+  let html = `<div class="bk-top"><div><small>What would you like to watch today?</small><h2>Videos</h2></div>
+    <button class="bk-iconbtn" onclick="openLibrary()" aria-label="Search">${CX_SEARCH}</button></div>`;
 
-  if(reading.length){
-    html += `<div class="bk-sec">Lanjut Membaca</div>
-      <div class="cx-row">${reading.map(({ b, i }, k) => cxContinueCard(b, i, k)).join('')}</div>`;
+  if(watching.length){
+    html += `<div class="bk-sec">Continue Watching</div>
+      <div class="cx-row">${watching.map(({ v, i }, k) => cxContinueCard(v, i, k)).join('')}</div>`;
   }
 
-  html += `<div class="bk-sec-row"><div class="bk-sec">Untuk Kamu</div><button class="bk-more" onclick="openLibrary()">Lihat semua ${CX_CHEV}</button></div>
+  html += `<div class="bk-sec-row"><div class="bk-sec">For You</div><button class="bk-more" onclick="openLibrary()">See all ${CX_CHEV}</button></div>
     <div class="bk-tabs">${CX_TABS.map(([k, l]) => `<button class="bk-tab${cx.tab === k ? ' on' : ''}" onclick="cxSetTab('${k}')">${l}</button>`).join('')}</div>`;
 
   if(shown.length){
-    html += `<div class="bk-list">${shown.map(({ b, i }, k) => cxListRow(b, i, k)).join('')}</div>`;
-    if(all.length > shown.length) html += `<button class="bk-all" onclick="openLibrary()">Lihat semua ${all.length} buku</button>`;
+    html += `<div class="bk-list">${shown.map(({ v, i }, k) => cxListRow(v, i, k)).join('')}</div>`;
+    if(all.length > shown.length) html += `<button class="bk-all" onclick="openLibrary()">See all ${all.length} videos</button>`;
   } else {
-    html += `<div class="cx-note">${cx.tab === 'fav' ? 'Belum ada favorit. Ketuk ikon penanda di salah satu buku.' : 'Tidak ada buku di kategori ini.'}</div>`;
+    html += `<div class="cx-note">${cx.tab === 'fav' ? 'Your list is empty. Tap the bookmark icon on any video.' : 'No videos here yet.'}</div>`;
   }
 
-  booksEl.innerHTML = html;
+  el.innerHTML = html;
   cx.drawn = true;
   restore();
 }
 
-/* ---------- Perpustakaan (cari + grid) ---------- */
+/* ---------- Library (cari + grid) ---------- */
 function openLibrary(){
   if(cx.libOpen) return;
   cx.libOpen = true;
@@ -221,87 +300,90 @@ function cxLibRender(){
   if(!chips || !grid) return;
   chips.innerHTML = CX_LIB_TABS.map(([k, l]) => `<button class="bk-chipbtn${cx.libTab === k ? ' on' : ''}" onclick="cxLibSetTab('${k}')">${l}</button>`).join('');
   const list = cxFiltered(cx.libTab, document.getElementById('lib-q').value);
-  if(!list.length){ grid.innerHTML = '<div class="bk-empty">Tidak ada buku yang cocok.</div>'; return; }
-  grid.innerHTML = list.map(({ b, i }, k) => {
-    const info = cxReadInfo(b.id), fav = cxIsFav(b.id);
-    return `<div class="bk-g" style="animation-delay:${Math.min(k, 10) * 40}ms" onclick="showBook(${i})">
-      ${cxCover(b, i, 'bk-gcov')}
+  if(!list.length){ grid.innerHTML = '<div class="bk-empty">No videos found.</div>'; return; }
+  grid.innerHTML = list.map(({ v, i }, k) => {
+    const info = cxWatch(v.id), fav = cxIsFav(v.id);
+    return `<div class="bk-g" style="animation-delay:${Math.min(k, 10) * 40}ms" onclick="showVideo(${i})">
+      ${cxCover(v, i, 'bk-gcov')}
       <div class="bk-shade"></div>
       ${info && !cxDone(info) ? cxRing(cxPct(info)) : ''}
       ${fav ? `<span class="bk-gfav">${CX_BM(true)}</span>` : ''}
-      <div class="bk-gt">${escapeHtml(b.title)}</div>
+      <div class="bk-gt">${escapeHtml(cxTitle(v))}</div>
     </div>`;
   }).join('');
 }
 
-/* ---------- Detail buku ---------- */
-function showBook(i){
-  const b = cx.books && cx.books[i];
-  if(!b) return;
+/* ---------- Detail video ---------- */
+function showVideo(i){
+  const v = cx.videos && cx.videos[i];
+  if(!v) return;
   cx.detail = i;
-  renderBookDetail(i);
+  cx.rateOpen = false;
+  renderVideoDetail(i);
   document.getElementById('bk-scroll').scrollTop = 0;
   if(!document.getElementById('book-view').classList.contains('active')) ovOpen('book-view');
 }
 
-function renderBookDetail(i){
-  const b = cx.books[i];
-  const info = cxReadInfo(b.id), done = cxDone(info), pct = cxPct(info), fav = cxIsFav(b.id);
-  const bg = b.cover ? `<div class="bk-hero-bg" style="background-image:url('${escapeHtml(cxHref(b.cover))}')"></div>` : '';
-  const cta = !info ? 'Mulai Membaca' : (done ? 'Baca Lagi' : 'Lanjut Membaca');
+function renderVideoDetail(i){
+  const v = cx.videos[i];
+  const info = cxWatch(v.id), done = cxDone(info), pct = cxPct(info), fav = cxIsFav(v.id), rate = cxRate(v.id);
+  const bgUrl = v.thumb ? cxHref(v.thumb) : `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`;
+  const cta = !info ? 'Watch Now' : (done ? 'Watch Again' : 'Continue Watching');
   const share = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="6.5" cy="12" r="2.4" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6" r="2.4" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="18" r="2.4" stroke="currentColor" stroke-width="2"/><path d="M8.6 10.8l6.8-3.6M8.6 13.2l6.8 3.6" stroke="currentColor" stroke-width="2"/></svg>`;
-  const redo = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.5 12a8.5 8.5 0 102.6-6.1M3.5 4.5v4.2h4.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const star = `<svg width="22" height="22" viewBox="0 0 24 24" fill="${rate ? 'currentColor' : 'none'}"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
   const others = cxFiltered('all').filter(x => x.i !== i).slice(0, 4);
 
   document.getElementById('bk-scroll').innerHTML = `
-    <div class="bk-hero">${bg}
+    <div class="bk-hero"><div class="bk-hero-bg" style="background-image:url('${escapeHtml(bgUrl)}')"></div>
       <div class="bk-hero-in">
-        ${cxCover(b, i, 'bk-hcov')}
+        ${cxCover(v, i, 'bk-hcov')}
         <div class="bk-hinfo">
-          <h1>${escapeHtml(b.title)}</h1>
-          <p>${b.author ? escapeHtml(b.author) : 'Buku PDF'}</p>
-          <div class="bk-hchips"><span>PDF</span>${b.category ? `<span>${escapeHtml(b.category)}</span>` : ''}${done ? '<span>Selesai</span>' : ''}</div>
+          <h1>${escapeHtml(cxTitle(v))}</h1>
+          <p>${v.author ? escapeHtml(v.author) : 'YouTube'}</p>
+          <div class="bk-hchips"><span>YouTube</span>${v.category ? `<span>${escapeHtml(v.category)}</span>` : ''}${done ? '<span>Finished</span>' : ''}</div>
         </div>
       </div>
-      <button class="bk-cta" onclick="openBook(${i})">${CX_PLAY}<span>${cta}</span></button>
-      ${info ? `<div class="bk-hprog"><i style="width:${pct}%"></i></div><div class="bk-hprog-t">${cxStatus(info)} · ${pct}%</div>` : ''}
+      <button class="bk-cta" onclick="openVideo(${i})">${CX_PLAY}<span>${cta}</span></button>
+      ${info ? `<div class="bk-hprog"><i style="width:${pct}%"></i></div><div class="bk-hprog-t"><span>${cxStatus(info)} · ${pct}%</span><button onclick="cxRestart(${i})">Restart</button></div>` : ''}
     </div>
     <div class="bk-bodywrap">
-      <p class="bk-desc">${escapeHtml(b.desc || 'Buku PDF yang bisa dibaca langsung di aplikasi, termasuk saat offline setelah dibuka sekali.')}</p>
+      ${v.desc ? `<p class="bk-desc">${escapeHtml(v.desc)}</p>` : ''}
       <div class="bk-acts">
-        <button class="bk-act${fav ? ' on' : ''}" onclick="cxToggleFav(event,'${b.id}')">${CX_BM(fav)}<span>${fav ? 'Favorit' : 'Tambah favorit'}</span></button>
-        <button class="bk-act" onclick="cxRestart(${i})"${info ? '' : ' disabled'}>${redo}<span>Mulai ulang</span></button>
-        <button class="bk-act" onclick="cxShare(${i})">${share}<span>Bagikan</span></button>
+        <button class="bk-act${fav ? ' on' : ''}" onclick="cxToggleFav(event,'${v.id}')">${CX_BM(fav)}<span>My List</span></button>
+        <button class="bk-act${rate || cx.rateOpen ? ' on' : ''}" onclick="cxToggleRate()">${star}<span>${rate ? 'Rated ' + rate + '/5' : 'Rate'}</span></button>
+        <button class="bk-act" onclick="cxShare(${i})">${share}<span>Share</span></button>
       </div>
-      ${others.length ? `<div class="bk-sec" style="margin-top:18px">Buku Lainnya</div><div class="bk-list">${others.map(({ b: ob, i: oi }, k) => cxListRow(ob, oi, k)).join('')}</div>` : ''}
+      ${cx.rateOpen ? `<div class="bk-rate">${[1,2,3,4,5].map(n => `<button class="${n <= rate ? 'on' : ''}" onclick="cxSetRate('${v.id}',${n})" aria-label="${n} star">${CX_STAR(n <= rate)}</button>`).join('')}</div>` : ''}
+      ${others.length ? `<div class="bk-sec" style="margin-top:18px">Trending</div><div class="bk-list">${others.map(({ v: ov, i: oi }, k) => cxListRow(ov, oi, k)).join('')}</div>` : ''}
     </div>`;
 }
+function cxToggleRate(){ cx.rateOpen = !cx.rateOpen; if(cx.detail != null) renderVideoDetail(cx.detail); }
 
 function cxRestart(i){
-  const b = cx.books && cx.books[i];
-  if(!b || !cxReadInfo(b.id)) return;
-  try{ localStorage.removeItem(`cu_read_${currentUser}_${b.id}`); }catch(_){}
-  if(typeof showToast === 'function') showToast('Progres baca direset');
+  const v = cx.videos && cx.videos[i];
+  if(!v || !cxWatch(v.id)) return;
+  try{ localStorage.removeItem(`cu_watch_${currentUser}_${v.id}`); }catch(_){}
+  if(typeof showToast === 'function') showToast('Progress reset');
   cxRefreshOpen();
 }
 async function cxShare(i){
-  const b = cx.books && cx.books[i];
-  if(!b) return;
-  const url = new URL(cxHref(b.file), document.baseURI).href;
+  const v = cx.videos && cx.videos[i];
+  if(!v) return;
+  const url = 'https://youtu.be/' + v.id;
   try{
-    if(navigator.share) await navigator.share({ title: b.title, text: `Baca "${b.title}"`, url });
-    else { await navigator.clipboard.writeText(url); showToast('Tautan buku disalin'); }
+    if(navigator.share) await navigator.share({ title: cxTitle(v), text: cxTitle(v), url });
+    else { await navigator.clipboard.writeText(url); showToast('Link copied'); }
   }catch(_){}
 }
 
-/* segarkan semua tampilan buku yang sedang terbuka */
+/* segarkan semua tampilan video yang sedang terbuka */
 function cxRefreshOpen(){
   if(typeof currentData !== 'undefined' && currentData) renderHomeContent(false);
-  if(cx.detail != null && cx.books && cx.books[cx.detail] && document.getElementById('book-view').classList.contains('show')) renderBookDetail(cx.detail);
+  if(cx.detail != null && cx.videos && cx.videos[cx.detail] && document.getElementById('book-view').classList.contains('show')) renderVideoDetail(cx.detail);
   if(cx.libOpen) cxLibRender();
 }
 
-/* ---------- Overlay (pembaca) + tombol Kembali Android ---------- */
+/* ---------- Overlay + tombol Kembali Android ---------- */
 const ovStack = [];
 let ovHistoryOk = true;
 function ovOpen(id){
@@ -317,7 +399,7 @@ function ovHide(id){
   if(!el) return;
   el.classList.remove('active');
   setTimeout(() => { if(!el.classList.contains('active')) el.classList.remove('show'); }, 380);
-  if(id === 'reader-view') readerCleanup();
+  if(id === 'player-view') plCleanup();
   if(id === 'book-view') cx.detail = null;
   if(id === 'lib-view') cx.libOpen = false;
 }
@@ -333,335 +415,138 @@ window.addEventListener('popstate', () => {
   if(top) ovHide(top);
 });
 
-/* ---------- Pembaca PDF (pdf.js, disertakan di folder lib/) ---------- */
-let pdfjs = null;
-let rd = null;
-const RD_ZOOMS = [1, 1.5, 2, 3, 4];
-const RD_MIN = 1, RD_MAX = 4;
+/* ---------- Pemutar YouTube (hanya saat online) ---------- */
+let pl = null;       // sesi pemutar yang sedang terbuka
+let ytApiP = null;
 
-async function getPdfJs(){
-  if(pdfjs) return pdfjs;
-  const mod = await import('./lib/pdf.min.mjs');
-  mod.GlobalWorkerOptions.workerSrc = new URL('lib/pdf.worker.min.mjs', document.baseURI).href;
-  pdfjs = mod;
-  return mod;
+function ytApi(){
+  if(window.YT && window.YT.Player) return Promise.resolve();
+  if(ytApiP) return ytApiP;
+  ytApiP = new Promise((res, rej) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { try{ if(prev) prev(); }catch(_){} res(); };
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    s.async = true;
+    s.onerror = () => { ytApiP = null; s.remove(); rej(new Error('yt-api')); };
+    document.head.appendChild(s);
+    setTimeout(() => { if(!(window.YT && window.YT.Player)){ ytApiP = null; rej(new Error('yt-timeout')); } }, 10000);
+  });
+  return ytApiP;
 }
 
-async function cxFetchBytes(url, onProgress){
-  const resp = await fetch(cxHref(url));
-  if(!resp.ok) throw new Error('HTTP ' + resp.status);
-  const total = Number(resp.headers.get('Content-Length')) || 0;
-  if(!resp.body || !resp.body.getReader) return new Uint8Array(await resp.arrayBuffer());
-  const reader = resp.body.getReader();
-  const chunks = []; let got = 0;
-  for(;;){
-    const { done, value } = await reader.read();
-    if(done) break;
-    chunks.push(value); got += value.length;
-    onProgress(total ? Math.min(1, got / total) : null, got);
+const PL_ICON_OFF = '<svg width="44" height="44" viewBox="0 0 24 24" fill="none"><path d="M2.5 9a15 15 0 0119 0M5.5 12.5a10.5 10.5 0 0113 0M8.7 16a5.5 5.5 0 016.6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.3" fill="currentColor"/><path d="M3.5 3.5l17 17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+function plStatus(kind, msg){
+  const el = document.getElementById('pl-status');
+  if(!el) return;
+  if(pl) pl.mode = kind;
+  if(!kind){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'flex';
+  if(kind === 'loading') el.innerHTML = '<div class="pl-spin"></div><div class="pl-stxt">Loading player…</div>';
+  else if(kind === 'offline') el.innerHTML = `${PL_ICON_OFF}<div class="pl-err">You're offline<small>Connect to the internet to watch videos from YouTube.</small></div><button class="pl-btn" onclick="plStart()">Try again</button>`;
+  else el.innerHTML = `<div class="pl-err">${escapeHtml(msg || "This video can't be played here")}<small>You can still watch it on YouTube.</small></div><div class="pl-btns"><button class="pl-btn" onclick="plStart()">Try again</button><button class="pl-btn alt" onclick="plOpenYT()">Open in YouTube</button></div>`;
+}
+
+function openVideo(i){
+  const v = cx.videos && cx.videos[i];
+  if(!v) return;
+  if(pl) plCleanup();
+  pl = { i, v, player:null, timer:0, mode:'', ended:false };
+  document.getElementById('pl-title').textContent = cxTitle(v);
+  document.getElementById('pl-sub').textContent = v.author || 'YouTube';
+  document.getElementById('pl-info').innerHTML =
+    `<h1>${escapeHtml(cxTitle(v))}</h1><p class="pl-by">${v.author ? escapeHtml(v.author) : 'YouTube'}${v.category ? ` <span class="bk-chip">${escapeHtml(v.category)}</span>` : ''}</p>` +
+    (v.desc ? `<p class="pl-desc">${escapeHtml(v.desc)}</p>` : '') +
+    `<button class="pl-btn alt" onclick="plOpenYT()">Open in YouTube</button>`;
+  document.getElementById('pl-holder').innerHTML = '';
+  ovOpen('player-view');
+  plStart();
+}
+
+async function plStart(){
+  const my = pl;
+  if(!my) return;
+  const holder = document.getElementById('pl-holder');
+  holder.innerHTML = '';
+  if(my.player){ try{ my.player.destroy(); }catch(_){} my.player = null; }
+  clearInterval(my.timer);
+  plStatus('loading');
+  if(!navigator.onLine){ plStatus('offline'); return; }
+  try{ await ytApi(); }
+  catch(_){
+    if(pl !== my) return;
+    if(!navigator.onLine){ plStatus('offline'); return; }
+    plFallback(my); // API diblokir/lambat -> pemutar biasa (tanpa catatan progres)
+    return;
   }
-  const out = new Uint8Array(got); let off = 0;
-  for(const c of chunks){ out.set(c, off); off += c.length; }
-  return out;
-}
-
-function rdSetStatus(html){
-  document.getElementById('rd-status').innerHTML = html || '';
-  document.getElementById('rd-status').style.display = html ? 'flex' : 'none';
-}
-
-function openBook(i){
-  const b = cx.books && cx.books[i];
-  if(!b) return;
-  rd = { book:b, idx:i, doc:null, n:0, zoom:1, ratio:1.414, rendered:new Map(), io:null, cur:1, saveT:null, token:Symbol(), pendingPage:1 };
-  document.getElementById('rd-title').textContent = b.title;
-  document.getElementById('rd-sub').textContent = b.author || 'Memuat…';
-  document.getElementById('rd-pages').innerHTML = '';
-  document.getElementById('rd-bar').style.width = '0%';
-  document.getElementById('rd-zoom-label').textContent = '100%';
-  document.getElementById('rd-pill').classList.remove('show');
-  ovOpen('reader-view');
-  rdLoad();
-}
-
-async function rdLoad(){
-  const my = rd; if(!my) return;
-  rdSetStatus('<div class="rd-spin"></div><div class="rd-stxt" id="rd-stxt">Memuat buku…</div>');
+  if(pl !== my) return;
+  const info = cxWatch(my.v.id);
+  const start = info && !cxDone(info) ? Math.floor(info.t) : 0;
+  holder.innerHTML = '<div id="pl-yt"></div>';
   try{
-    const [lib, bytes] = await Promise.all([
-      getPdfJs(),
-      cxFetchBytes(my.book.file, (p, got) => {
-        const t = document.getElementById('rd-stxt');
-        if(t && rd === my) t.textContent = p != null ? `Memuat buku… ${Math.round(p*100)}%` : `Memuat buku… ${(got/1048576).toFixed(1)} MB`;
-      })
-    ]);
-    if(rd !== my) return;
-    const task = lib.getDocument({
-      data: bytes, isEvalSupported: false,
-      wasmUrl: new URL('lib/wasm/', document.baseURI).href
+    my.player = new YT.Player('pl-yt', {
+      videoId: my.v.id,
+      host: 'https://www.youtube-nocookie.com',
+      playerVars: { autoplay:1, playsinline:1, rel:0, modestbranding:1, start, origin: location.origin },
+      events: {
+        onReady: () => { if(pl === my) plStatus(''); },
+        onStateChange: (e) => plState(my, e.data),
+        onError: (e) => {
+          if(pl !== my) return;
+          const c = e && e.data;
+          plStatus('error', (c === 101 || c === 150 || c === 153) ? "The owner doesn't allow this video to play in other apps" : (c === 100 ? 'This video is unavailable' : "This video can't be played"));
+        }
+      }
     });
-    my.doc = await task.promise;
-    if(rd !== my){ my.doc.destroy(); return; }
-    my.n = my.doc.numPages;
-    const first = await my.doc.getPage(1);
-    const vp = first.getViewport({ scale: 1 });
-    my.ratio = vp.height / vp.width;
-    const saved = cxReadInfo(my.book.id);
-    my.pendingPage = saved ? Math.min(saved.p, my.n) : 1;
-    rdBuild();
-    rdSetStatus('');
-  }catch(e){
-    if(rd !== my) return;
-    console.error(e);
-    rdSetStatus(`<div class="rd-err">Buku tidak bisa dibuka.<br><small>Periksa koneksi internet atau nama file PDF-nya.</small></div><button class="rd-retry" onclick="rdLoad()">Coba lagi</button>`);
+  }catch(_){ plFallback(my); }
+}
+
+function plFallback(my){
+  if(pl !== my) return;
+  const src = `https://www.youtube-nocookie.com/embed/${my.v.id}?autoplay=1&playsinline=1&rel=0&modestbranding=1`;
+  document.getElementById('pl-holder').innerHTML = `<iframe src="${src}" title="YouTube video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+  plStatus('');
+}
+
+function plState(my, st){
+  if(pl !== my) return;
+  plStatus('');
+  if(st === 1){            // sedang diputar -> simpan progres tiap 4 detik
+    clearInterval(my.timer);
+    my.timer = setInterval(() => plSave(my), 4000);
+  } else {
+    clearInterval(my.timer);
+    if(st === 0){ my.ended = true; }
+    plSave(my);
   }
 }
-
-function rdPageWidth(){
-  const sc = document.getElementById('rd-scroll');
-  return Math.max(200, Math.floor((sc.clientWidth - 24) * rd.zoom));
-}
-
-function rdBuild(){
-  const wrap = document.getElementById('rd-pages');
-  const w = rdPageWidth();
-  let html = '';
-  for(let p = 1; p <= rd.n; p++) html += `<div class="rd-page" data-p="${p}" style="width:${w}px;height:${Math.round(w*rd.ratio)}px"><span class="rd-pn">${p}</span></div>`;
-  wrap.innerHTML = html;
-  document.getElementById('rd-sub').textContent = `Hal. ${rd.pendingPage} dari ${rd.n}`;
-
-  const sc = document.getElementById('rd-scroll');
-  if(rd.io) rd.io.disconnect();
-  rd.io = new IntersectionObserver((entries) => {
-    entries.forEach(en => {
-      const p = Number(en.target.dataset.p);
-      if(en.isIntersecting) rdRenderPage(p);
-      else rdUnrenderPage(p);
-    });
-  }, { root: sc, rootMargin: '700px 0px' });
-  wrap.querySelectorAll('.rd-page').forEach(el => rd.io.observe(el));
-
-  const target = wrap.querySelector(`.rd-page[data-p="${rd.pendingPage}"]`);
-  if(target) sc.scrollTop = target.offsetTop - 12;
-  document.getElementById('rd-pill').classList.add('show');
-  rdOnScroll();
-}
-
-async function rdRenderPage(p){
-  const my = rd; if(!my || !my.doc) return;
-  if(my.rendered.has(p)) return;
-  const slot = { canvas:null, task:null, zoom:my.zoom };
-  my.rendered.set(p, slot);
+function plSave(my){
+  if(!my || !my.player || !my.player.getCurrentTime) return;
   try{
-    const page = await my.doc.getPage(p);
-    if(rd !== my || my.rendered.get(p) !== slot) return;
-    const el = document.querySelector(`#rd-pages .rd-page[data-p="${p}"]`);
-    if(!el) return;
-    const cssW = rdPageWidth();
-    const base = page.getViewport({ scale: 1 });
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    let scale = (cssW / base.width) * dpr;
-    const maxPx = 12e6;
-    if(base.width * base.height * scale * scale > maxPx) scale = Math.sqrt(maxPx / (base.width * base.height));
-    const vp = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
-    canvas.style.width = cssW + 'px';
-    canvas.style.height = Math.round(cssW * base.height / base.width) + 'px';
-    slot.canvas = canvas;
-    slot.task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
-    await slot.task.promise;
-    if(rd !== my || my.rendered.get(p) !== slot) return;
-    el.style.height = canvas.style.height;
-    el.appendChild(canvas);
-    requestAnimationFrame(() => canvas.classList.add('in'));
-  }catch(e){
-    if(e && e.name === 'RenderingCancelledException') return;
-    if(my.rendered.get(p) === slot) my.rendered.delete(p);
-  }
+    const d = my.player.getDuration(), t = my.ended ? d : my.player.getCurrentTime();
+    if(!(d > 0) || !(t >= 3)) return;
+    localStorage.setItem(`cu_watch_${currentUser}_${my.v.id}`, JSON.stringify({ t: Math.floor(t), d: Math.floor(d), done: my.ended || t >= d - 8 }));
+  }catch(_){}
+}
+function plOpenYT(){
+  if(!pl) return;
+  const t = pl.player && pl.player.getCurrentTime ? Math.floor(pl.player.getCurrentTime() || 0) : 0;
+  window.open(`https://www.youtube.com/watch?v=${pl.v.id}${t > 3 ? '&t=' + t + 's' : ''}`, '_blank', 'noopener');
+}
+function plCleanup(){
+  const my = pl;
+  if(!my) return;
+  plSave(my);
+  clearInterval(my.timer);
+  try{ if(my.player) my.player.destroy(); }catch(_){}
+  pl = null;
+  setTimeout(() => { if(!pl){ const h = document.getElementById('pl-holder'); if(h) h.innerHTML = ''; } }, 420);
+  cxRefreshOpen(); // perbarui progres di Beranda, detail, dan library
 }
 
-function rdUnrenderPage(p){
-  if(!rd) return;
-  const slot = rd.rendered.get(p);
-  if(!slot) return;
-  try{ if(slot.task) slot.task.cancel(); }catch(_){}
-  if(slot.canvas){ slot.canvas.width = 0; slot.canvas.remove(); }
-  rd.rendered.delete(p);
-}
+// koneksi kembali -> pemutar yang sedang menunggu internet langsung dimuat
+window.addEventListener('online', () => { if(pl && pl.mode === 'offline') plStart(); });
+// aplikasi disembunyikan / tab ditutup -> simpan progres terakhir
+document.addEventListener('visibilitychange', () => { if(document.hidden && pl) plSave(pl); });
 
-let rdScrollRaf = 0;
-function rdOnScroll(){
-  if(!rd || !rd.n) return;
-  if(rdScrollRaf) return;
-  rdScrollRaf = requestAnimationFrame(() => {
-    rdScrollRaf = 0;
-    if(!rd || !rd.n) return;
-    const sc = document.getElementById('rd-scroll');
-    const line = sc.scrollTop + sc.clientHeight * 0.35;
-    const pages = document.querySelectorAll('#rd-pages .rd-page');
-    let cur = 1;
-    for(let i = 0; i < pages.length; i++){
-      if(pages[i].offsetTop <= line) cur = i + 1; else break;
-    }
-    rd.cur = cur;
-    document.getElementById('rd-sub').textContent = `Hal. ${cur} dari ${rd.n}`;
-    document.getElementById('rd-pill-t').textContent = `${cur} / ${rd.n}`;
-    const max = sc.scrollHeight - sc.clientHeight;
-    document.getElementById('rd-bar').style.width = (max > 0 ? Math.min(100, sc.scrollTop / max * 100) : 0) + '%';
-    clearTimeout(rd.saveT);
-    const snap = rd;
-    rd.saveT = setTimeout(() => rdSaveProgress(snap), 500);
-  });
-}
-
-function rdSaveProgress(r){
-  r = r || rd;
-  if(!r || !r.n || !r.book) return;
-  try{ localStorage.setItem(`cu_read_${currentUser}_${r.book.id}`, JSON.stringify({ p:r.cur, n:r.n })); }catch(_){}
-}
-
-function rdRenderVisible(){
-  if(!rd || !rd.n) return;
-  const sc = document.getElementById('rd-scroll');
-  const top = sc.scrollTop - 700, bot = sc.scrollTop + sc.clientHeight + 700;
-  document.querySelectorAll('#rd-pages .rd-page').forEach(el => {
-    const t = el.offsetTop, b = t + el.offsetHeight;
-    if(b >= top && t <= bot) rdRenderPage(Number(el.dataset.p));
-  });
-}
-
-/* Ubah zoom (kontinu 100%-400%) dengan titik fokus (cx,cy) = posisi di layar
-   yang harus tetap berada di bawah jari / tengah layar. */
-function rdSetZoom(newZ, cx, cy, force){
-  if(!rd || !rd.n) return;
-  newZ = Math.max(RD_MIN, Math.min(RD_MAX, newZ));
-  const label = document.getElementById('rd-zoom-label');
-  if(!force && Math.abs(newZ - rd.zoom) < 0.01){ label.textContent = Math.round(rd.zoom * 100) + '%'; return; }
-  const sc = document.getElementById('rd-scroll');
-  const pages = Array.from(document.querySelectorAll('#rd-pages .rd-page'));
-  if(!pages.length) return;
-  if(cx == null) cx = sc.clientWidth / 2;
-  if(cy == null) cy = sc.clientHeight / 2;
-
-  // titik fokus dicatat relatif terhadap halaman di bawahnya (tahan terhadap jarak antar halaman)
-  const y = sc.scrollTop + cy;
-  let ap = pages[0];
-  for(const p of pages){ if(p.offsetTop <= y) ap = p; else break; }
-  const fy = (y - ap.offsetTop) / Math.max(1, ap.offsetHeight);
-  const fx = (sc.scrollLeft + cx - ap.offsetLeft) / Math.max(1, ap.offsetWidth);
-
-  rd.zoom = newZ;
-  label.textContent = Math.round(newZ * 100) + '%';
-  Array.from(rd.rendered.keys()).forEach(rdUnrenderPage);
-  const w = rdPageWidth(), h = Math.round(w * rd.ratio);
-  pages.forEach(el => { el.style.width = w + 'px'; el.style.height = h + 'px'; });
-
-  sc.scrollTop = ap.offsetTop + fy * ap.offsetHeight - cy;
-  sc.scrollLeft = ap.offsetLeft + fx * ap.offsetWidth - cx;
-  rdRenderVisible();
-  rdOnScroll();
-}
-
-function rdZoom(dir){
-  if(!rd || !rd.n) return;
-  const cur = rd.zoom;
-  const next = dir > 0
-    ? (RD_ZOOMS.find(z => z > cur + 0.02) || RD_MAX)
-    : ([...RD_ZOOMS].reverse().find(z => z < cur - 0.02) || RD_MIN);
-  rdSetZoom(next);
-}
-function rdZoomReset(){ rdSetZoom(1); }
-
-function rdScrollToPage(p){
-  if(!rd || !rd.n) return;
-  p = Math.max(1, Math.min(rd.n, p));
-  const el = document.querySelector(`#rd-pages .rd-page[data-p="${p}"]`);
-  if(el) document.getElementById('rd-scroll').scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' });
-}
-function rdPage(dir){ if(rd) rdScrollToPage(rd.cur + dir); }
-function rdAskPage(){
-  if(!rd || !rd.n) return;
-  const v = parseInt(prompt(`Ke halaman berapa? (1-${rd.n})`, String(rd.cur)), 10);
-  if(v) rdScrollToPage(v);
-}
-
-function readerCleanup(){
-  const r = rd;
-  if(!r) return;
-  rdSaveProgress(r);
-  const pill = document.getElementById('rd-pill'); if(pill) pill.classList.remove('show');
-  clearTimeout(r.saveT);
-  if(r.io) r.io.disconnect();
-  Array.from(r.rendered.keys()).forEach(p => { const s = r.rendered.get(p); try{ if(s.task) s.task.cancel(); }catch(_){} if(s.canvas){ s.canvas.width = 0; } });
-  r.rendered.clear();
-  try{ if(r.doc) r.doc.destroy(); }catch(_){}
-  rd = null;
-  setTimeout(() => { if(!rd){ document.getElementById('rd-pages').innerHTML = ''; } }, 420);
-  cxRefreshOpen(); // perbarui progres di Beranda, detail, dan perpustakaan
-}
-
-(function(){
-  const sc = document.getElementById('rd-scroll');
-  if(!sc) return;
-  sc.addEventListener('scroll', rdOnScroll, { passive:true });
-
-  /* ---- Gestur: cubit untuk zoom, ketuk 2x untuk zoom cepat, geser ke segala arah ---- */
-  const pagesEl = () => document.getElementById('rd-pages');
-  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  let pinch = null, tapStart = null, lastTap = { t:0, x:0, y:0 };
-
-  sc.addEventListener('touchstart', (e) => {
-    if(!rd || !rd.n) return;
-    if(e.touches.length === 2){
-      const r = sc.getBoundingClientRect();
-      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
-      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
-      pinch = { d0: dist(e.touches), z0: rd.zoom, cx, cy, k: 1 };
-      const pg = pagesEl();
-      pg.style.transformOrigin = `${sc.scrollLeft + cx}px ${sc.scrollTop + cy}px`;
-      pg.style.willChange = 'transform';
-      tapStart = null;
-    } else if(e.touches.length === 1){
-      tapStart = { x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now() };
-    } else { tapStart = null; }
-  }, { passive:true });
-
-  sc.addEventListener('touchmove', (e) => {
-    if(!pinch || e.touches.length !== 2) return;
-    e.preventDefault();
-    const k = Math.max(RD_MIN / pinch.z0, Math.min(RD_MAX / pinch.z0, dist(e.touches) / pinch.d0));
-    pinch.k = k;
-    pagesEl().style.transform = `scale(${k})`;
-  }, { passive:false });
-
-  const endPinch = (e) => {
-    if(!pinch || e.touches.length >= 2) return;
-    const p = pinch; pinch = null;
-    const pg = pagesEl();
-    pg.style.transform = ''; pg.style.transformOrigin = ''; pg.style.willChange = '';
-    rdSetZoom(p.z0 * p.k, p.cx, p.cy);
-  };
-  sc.addEventListener('touchend', (e) => {
-    if(pinch){ endPinch(e); return; }
-    if(!rd || !rd.n || e.touches.length || e.changedTouches.length !== 1) return;
-    const t = e.changedTouches[0], now = Date.now();
-    if(!tapStart || Math.hypot(t.clientX - tapStart.x, t.clientY - tapStart.y) > 12 || now - tapStart.t > 300){ lastTap.t = 0; return; }
-    if(now - lastTap.t < 320 && Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) < 40){
-      lastTap.t = 0;
-      const r = sc.getBoundingClientRect();
-      rdSetZoom(rd.zoom > 1.2 ? 1 : 2.5, t.clientX - r.left, t.clientY - r.top);
-    } else {
-      lastTap = { t:now, x:t.clientX, y:t.clientY };
-    }
-  }, { passive:true });
-  sc.addEventListener('touchcancel', endPinch, { passive:true });
-
-  // putar layar / ubah ukuran -> susun ulang lebar halaman
-  let rzT = 0;
-  window.addEventListener('resize', () => {
-    clearTimeout(rzT);
-    rzT = setTimeout(() => { if(rd && rd.n) rdSetZoom(rd.zoom, null, null, true); }, 200);
-  });
-})();
 if(typeof currentUser !== 'undefined' && currentUser) loadHomeContent();

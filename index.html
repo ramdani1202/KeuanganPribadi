@@ -22,6 +22,8 @@
     --out:#C24A3E;
     --out-soft:#FBE4E0;
     --accent:#14B8A6;
+    --bk:#E2400F;
+    --bk-soft:#FDE7DF;
     --accent-deep:#0F766E;
     --white:#FFFFFF;
     --shadow: 0 4px 16px rgba(13,148,136,0.08);
@@ -65,6 +67,50 @@
   .screen.entering-fade{ animation:screenFadeIn 0.24s ease forwards; }
   .screen.leaving-slide{ animation:screenSlideOutLeft 0.28s cubic-bezier(.4,0,.2,1) forwards; }
   .screen.entering-slide{ animation:screenSlideInRight 0.28s cubic-bezier(.4,0,.2,1) forwards; box-shadow:-6px 0 24px rgba(0,0,0,0.08); }
+
+
+  /* ---- Video YouTube ---- */
+  .bk-pl{ position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%; background:rgba(0,0,0,.42); color:#fff; z-index:1; pointer-events:none;
+    display:flex; align-items:center; justify-content:center; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .bk-pl svg{ width:22px; height:22px; margin-left:2px; }
+  .bk-thumb .bk-pl{ width:26px; height:26px; margin:-13px 0 0 -13px; }
+  .bk-thumb .bk-pl svg{ width:13px; height:13px; }
+  .bk-g .bk-pl{ width:40px; height:40px; margin:-20px 0 0 -20px; }
+  img.hq{ transform:scale(1.34); }
+  .bk-cc-cov .bk-cov-fb, .bk-gcov .bk-cov-fb{ display:none; }
+  .bk-stars{ margin-top:3px; font-size:13px; letter-spacing:1px; color:#F5A524; }
+  .bk-rate{ display:flex; justify-content:center; gap:6px; padding:12px 0 2px; }
+  .bk-rate button{ border:0; background:none; padding:2px; color:#C9D6D3; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
+  .bk-rate button.on{ color:#F5A524; }
+  .bk-rate button:active{ transform:scale(.85); }
+  .bk-hprog-t{ display:flex; align-items:center; justify-content:space-between; }
+  .bk-hprog-t button{ border:0; background:rgba(255,255,255,.16); color:#fff; border-radius:999px; padding:5px 12px; font:700 11.5px var(--sans); cursor:pointer; }
+
+  /* Pemutar */
+  #player-view{ background:#0A1412; }
+  #player-view .ov-bar{ background:transparent; box-shadow:none; }
+  #player-view .ov-back{ background:rgba(255,255,255,.14); color:#fff; }
+  #player-view .ov-titles b{ color:#fff; }
+  #player-view .ov-titles small{ color:rgba(255,255,255,.65); }
+  .pl-body{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding-bottom:env(safe-area-inset-bottom); }
+  .pl-frame{ position:relative; width:100%; aspect-ratio:16/9; background:#000; }
+  @media (orientation:landscape) and (max-height:520px){ .pl-frame{ aspect-ratio:auto; height:calc(100vh - 70px); } }
+  #pl-holder{ position:absolute; inset:0; }
+  #pl-holder iframe, #pl-holder > div{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .pl-status{ position:absolute; inset:0; z-index:3; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:16px; text-align:center; color:#fff; background:#0A1412; }
+  .pl-spin{ width:38px; height:38px; border-radius:50%; border:4px solid rgba(255,255,255,.2); border-top-color:var(--bk); animation:plspin .8s linear infinite; }
+  @keyframes plspin{ to{ transform:rotate(360deg); } }
+  .pl-stxt{ font-size:14px; font-weight:700; opacity:.8; }
+  .pl-err{ font-size:15px; font-weight:800; line-height:1.4; }
+  .pl-err small{ display:block; margin-top:4px; font-size:12.5px; font-weight:600; opacity:.7; }
+  .pl-btns{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .pl-btn{ border:0; border-radius:999px; background:var(--bk); color:#fff; font:800 14px var(--sans); padding:11px 20px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .pl-btn.alt{ background:rgba(255,255,255,.14); }
+  .pl-info{ padding:18px 20px 30px; color:#fff; }
+  .pl-info h1{ margin:0 0 6px; font-size:20px; line-height:1.25; font-weight:800; letter-spacing:-.3px; }
+  .pl-by{ margin:0 0 12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px; font-weight:600; opacity:.75; }
+  .pl-info .bk-chip{ background:rgba(255,255,255,.14); color:#fff; }
+  .pl-desc{ margin:0 0 16px; font-size:14px; line-height:1.65; opacity:.85; }
 
   @media (prefers-reduced-motion: reduce){
     .screen.leaving-fade, .screen.leaving-slide, .screen.entering-fade, .screen.entering-slide{ animation:none !important; }
@@ -333,14 +379,14 @@
   .bk-top h2{ margin:0; font-size:27px; line-height:1.1; letter-spacing:-0.7px; font-weight:800; color:var(--ink); }
   .bk-iconbtn{ width:44px; height:44px; border-radius:50%; border:0; background:var(--white); color:var(--ink); box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
   .bk-iconbtn:active{ transform:scale(.9); }
-  .bk-sec{ margin:16px 2px 0; font-size:19px; font-weight:800; letter-spacing:-0.4px; color:var(--in-deep); }
+  .bk-sec{ margin:16px 2px 0; font-size:19px; font-weight:800; letter-spacing:-0.4px; color:var(--bk); }
   .bk-sec-row{ display:flex; align-items:flex-end; justify-content:space-between; }
-  .bk-more{ border:0; background:none; display:flex; align-items:center; gap:2px; padding:6px 2px; color:var(--in-deep); font:700 12.5px var(--sans); cursor:pointer; }
+  .bk-more{ border:0; background:none; display:flex; align-items:center; gap:2px; padding:6px 2px; color:var(--bk); font:700 12.5px var(--sans); cursor:pointer; }
   .bk-tabs{ display:flex; gap:20px; margin:6px 2px 0; overflow-x:auto; scrollbar-width:none; }
   .bk-tabs::-webkit-scrollbar{ display:none; }
   .bk-tab{ border:0; background:none; position:relative; padding:8px 0; font:700 14px var(--sans); color:var(--ink-soft); white-space:nowrap; cursor:pointer; }
   .bk-tab.on{ color:var(--ink); }
-  .bk-tab.on::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:3px; border-radius:3px; background:var(--in); }
+  .bk-tab.on::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:3px; border-radius:3px; background:var(--bk); }
   .bk-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
   .bk-item{ display:flex; align-items:center; gap:14px; padding:12px; border-radius:20px; background:var(--white); box-shadow:var(--shadow); cursor:pointer; -webkit-tap-highlight-color:transparent;
     animation:riseIn .45s cubic-bezier(.2,.8,.2,1) backwards; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
@@ -354,13 +400,13 @@
   .bk-info{ flex:1; min-width:0; }
   .bk-t{ font-size:16px; font-weight:800; line-height:1.25; color:var(--ink); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .bk-a{ margin-top:2px; font-size:13px; font-weight:600; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .bk-meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px; font-size:11.5px; font-weight:700; color:var(--in-deep); }
-  .bk-chip{ padding:3px 9px; border-radius:7px; background:var(--in-soft); font-size:10.5px; font-weight:800; }
+  .bk-meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px; font-size:11.5px; font-weight:700; color:var(--bk); }
+  .bk-chip{ padding:3px 9px; border-radius:7px; background:var(--bk-soft); font-size:10.5px; font-weight:800; }
   .bk-mini{ height:4px; margin-top:8px; border-radius:99px; background:var(--paper-dim); overflow:hidden; }
-  .bk-mini i{ display:block; height:100%; border-radius:99px; background:var(--in); }
+  .bk-mini i{ display:block; height:100%; border-radius:99px; background:var(--bk); }
   .bk-bm{ align-self:flex-start; width:36px; height:40px; border:0; background:none; color:#9DB3AF; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .bk-bm.on{ color:var(--in); }
-  .bk-all{ width:100%; margin-top:12px; height:48px; border:0; border-radius:16px; background:var(--in-soft); color:var(--in-deep); font:800 14px var(--sans); cursor:pointer; }
+  .bk-bm.on{ color:var(--bk); }
+  .bk-all{ width:100%; margin-top:12px; height:48px; border:0; border-radius:16px; background:var(--bk-soft); color:var(--bk); font:800 14px var(--sans); cursor:pointer; }
   .bk-all:active{ transform:scale(.98); }
 
   .bk-cc{ position:relative; width:min(205px, 56vw); aspect-ratio:3/4.1; border-radius:24px; overflow:hidden; cursor:pointer; box-shadow:0 18px 28px -16px rgba(8,32,30,.65);
@@ -380,7 +426,7 @@
   .bk-chips{ display:flex; gap:8px; padding:8px 16px 4px; overflow-x:auto; scrollbar-width:none; flex-shrink:0; }
   .bk-chips::-webkit-scrollbar{ display:none; }
   .bk-chipbtn{ flex-shrink:0; border:0; border-radius:999px; padding:9px 15px; background:var(--white); box-shadow:var(--shadow); font:700 12.5px var(--sans); color:var(--ink-soft); white-space:nowrap; cursor:pointer; }
-  .bk-chipbtn.on{ background:var(--in); color:#fff; }
+  .bk-chipbtn.on{ background:var(--bk); color:#fff; }
   #lib-scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:10px 16px calc(30px + env(safe-area-inset-bottom)); }
   .bk-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .bk-g{ position:relative; aspect-ratio:3/4; border-radius:22px; overflow:hidden; cursor:pointer; box-shadow:0 14px 22px -14px rgba(8,32,30,.6);
@@ -408,8 +454,8 @@
   .bk-hinfo p{ margin:0 0 10px; font-size:14px; font-weight:600; opacity:.8; }
   .bk-hchips{ display:flex; gap:6px; flex-wrap:wrap; }
   .bk-hchips span{ padding:4px 10px; border-radius:7px; background:rgba(255,255,255,.18); font-size:11px; font-weight:800; letter-spacing:.3px; }
-  .bk-cta{ width:100%; height:54px; margin-top:22px; border:0; border-radius:16px; background:var(--in); color:#fff; font:800 16px var(--sans); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;
-    box-shadow:0 14px 24px -12px rgba(13,148,136,.8); transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
+  .bk-cta{ width:100%; height:54px; margin-top:22px; border:0; border-radius:16px; background:var(--bk); color:#fff; font:800 16px var(--sans); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;
+    box-shadow:0 14px 24px -12px rgba(226,64,15,.65); transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
   .bk-cta:active{ transform:scale(.97); }
   .bk-hprog{ height:4px; margin-top:14px; border-radius:99px; background:rgba(255,255,255,.22); overflow:hidden; }
   .bk-hprog i{ display:block; height:100%; border-radius:99px; background:#fff; }
@@ -418,7 +464,7 @@
   .bk-desc{ margin:0; font-size:14.5px; line-height:1.65; color:#27413E; }
   .bk-acts{ display:flex; justify-content:space-around; margin:18px 0 4px; padding:12px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
   .bk-act{ border:0; background:none; min-width:84px; display:flex; flex-direction:column; align-items:center; gap:6px; font:700 12px var(--sans); color:var(--ink-soft); cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .bk-act.on{ color:var(--in); }
+  .bk-act.on{ color:var(--bk); }
   .bk-act:disabled{ opacity:.35; cursor:default; }
   .bk-act:active:not(:disabled){ transform:scale(.94); }
 
@@ -442,34 +488,10 @@
   .ov-titles b{ display:block; font-size:15px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ov-titles small{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-top:1px; }
 
-  .rd-zoom{ display:flex; align-items:center; gap:4px; flex-shrink:0; }
-  .rd-zoom button{ width:36px; height:36px; border-radius:50%; border:0; background:var(--paper-dim); color:var(--ink); font-size:20px; font-weight:700; line-height:1; cursor:pointer; font-family:var(--sans); }
-  .rd-zoom button:active{ transform:scale(.9); }
-  .rd-zoom span{ min-width:40px; text-align:center; font-size:11.5px; font-weight:800; color:var(--ink-soft); }
-  .rd-pill{ position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translate(-50%,24px); opacity:0; pointer-events:none; z-index:8;
     display:flex; align-items:center; gap:2px; padding:4px; border-radius:999px; background:rgba(11,43,41,.92); color:#fff; box-shadow:0 12px 26px -8px rgba(0,0,0,.45);
     transition:opacity .25s ease, transform .3s cubic-bezier(.2,.8,.2,1); }
-  .rd-pill.show{ opacity:1; transform:translate(-50%,0); pointer-events:auto; }
-  .rd-pill button{ border:0; background:none; color:#fff; height:42px; min-width:42px; border-radius:999px; display:flex; align-items:center; justify-content:center;
     font-family:var(--sans); font-weight:800; font-size:14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .rd-pill button:active{ background:rgba(255,255,255,.16); }
-  .rd-pill .rd-pill-t{ padding:0 14px; min-width:76px; }
-  .rd-prog{ height:3px; background:var(--paper-dim); flex-shrink:0; }
-  .rd-prog i{ display:block; height:100%; width:0; background:var(--in); transition:width .15s linear; }
-  .rd-scroll{ flex:1; overflow:auto; background:#D9E3E1; position:relative; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; -webkit-user-select:none; user-select:none; }
-  .rd-pages{ width:max-content; min-width:100%; box-sizing:border-box; padding:12px 12px calc(96px + env(safe-area-inset-bottom)); }
-  .rd-page{ position:relative; margin:0 auto 12px; background:#fff; border-radius:6px; box-shadow:0 6px 18px rgba(8,32,30,.16); overflow:hidden; }
-  .rd-page canvas{ display:block; position:relative; z-index:1; background:#fff; opacity:0; transition:opacity .25s ease; }
-  .rd-page canvas.in{ opacity:1; }
-  .rd-pn{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:38px; font-weight:800; color:#E3EBEA; }
-  .rd-status{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:#D9E3E1; z-index:5; text-align:center; padding:30px; }
-  .rd-spin{ width:38px; height:38px; border-radius:50%; border:4px solid #BFD3CF; border-top-color:var(--in); animation:rdspin .8s linear infinite; }
-  @keyframes rdspin{ to{ transform:rotate(360deg); } }
-  .rd-stxt{ font-size:14px; font-weight:700; color:var(--ink-soft); }
-  .rd-err{ font-size:15px; font-weight:800; color:var(--ink); line-height:1.5; }
-  .rd-err small{ display:block; font-weight:600; color:var(--ink-soft); font-size:12.5px; margin-top:4px; }
-  .rd-retry{ border:0; border-radius:999px; background:#0B2B29; color:#fff; font-weight:700; font-size:14px; padding:12px 24px; cursor:pointer; font-family:var(--sans); }
-  @media (prefers-reduced-motion: reduce){ .ov, .rd-spin, .cx-swipe svg, .cx-skel{ animation:none !important; transition:none !important; } }
+  @media (prefers-reduced-motion: reduce){ .ov, .pl-spin, .cx-swipe svg, .cx-skel{ animation:none !important; transition:none !important; } }
 
   /* ===== Bottom nav melayang (pil) ===== */
   .tabbar{
@@ -829,7 +851,7 @@
   <!-- ===================== ONBOARDING: BANKS ===================== -->
   <section class="screen" id="screen-ob-banks">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span></span><span></span><span></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-income')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-income')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">Rekening bank</h2>
       <p class="sub">Tambahkan nama bank yang kamu pakai. Lewati kalau tidak punya rekening.</p>
@@ -844,7 +866,7 @@
   <!-- ===================== ONBOARDING: EWALLET ===================== -->
   <section class="screen" id="screen-ob-ewallet">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span></span><span></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-banks')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-banks')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">E-wallet</h2>
       <p class="sub">Tambahkan dompet digital yang kamu pakai. Lewati kalau tidak ada.</p>
@@ -859,7 +881,7 @@
   <!-- ===================== ONBOARDING: BANK BALANCE ===================== -->
   <section class="screen" id="screen-ob-balance-bank">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-ewallet')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-ewallet')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">Saldo awal bank</h2>
       <p class="sub">Masukkan saldo saat ini di tiap rekening.</p>
@@ -873,7 +895,7 @@
   <!-- ===================== ONBOARDING: EWALLET BALANCE ===================== -->
   <section class="screen" id="screen-ob-balance-ewallet">
     <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-bank')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-bank')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content">
       <h2 class="title">Saldo awal e-wallet</h2>
       <p class="sub">Masukkan saldo saat ini di tiap dompet digital.</p>
@@ -886,7 +908,7 @@
 
   <!-- ===================== ONBOARDING: CASH ===================== -->
   <section class="screen" id="screen-ob-cash">
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-ewallet')" aria-label="Kembali"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-ewallet')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="content center-content">
       <h2 class="title">Uang tunai di tangan</h2>
       <p class="sub">Berapa uang cash yang kamu pegang sekarang?</p>
@@ -1157,8 +1179,8 @@
 <!-- Halaman penuh: perpustakaan (cari + grid) -->
 <div class="ov" id="lib-view">
   <div class="bk-lbar">
-    <button class="ov-back" onclick="ovClose('lib-view')" aria-label="Kembali"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <label class="bk-search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><input id="lib-q" type="search" placeholder="Cari buku" autocomplete="off" oninput="cxLibRender()"></label>
+    <button class="ov-back" onclick="ovClose('lib-view')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <label class="bk-search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><input id="lib-q" type="search" placeholder="Get a video" autocomplete="off" oninput="cxLibRender()"></label>
   </div>
   <div class="bk-chips" id="lib-chips"></div>
   <div id="lib-scroll"><div class="bk-grid" id="lib-grid"></div></div>
@@ -1166,30 +1188,20 @@
 
 <!-- Halaman penuh: detail buku -->
 <div class="ov" id="book-view">
-  <button class="bk-back" onclick="ovClose('book-view')" aria-label="Kembali"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <button class="bk-back" onclick="ovClose('book-view')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div id="bk-scroll"></div>
 </div>
 
-<!-- Halaman penuh: pembaca buku PDF -->
-<div class="ov" id="reader-view">
+<!-- Halaman penuh: pemutar video YouTube -->
+<div class="ov" id="player-view">
   <div class="ov-bar">
-    <button class="ov-back" onclick="ovClose('reader-view')" aria-label="Tutup buku"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div class="ov-titles"><b id="rd-title">Buku</b><small id="rd-sub"></small></div>
-    <div class="rd-zoom">
-      <button onclick="rdZoom(-1)" aria-label="Perkecil">−</button>
-      <span id="rd-zoom-label" onclick="rdZoomReset()" title="Kembali ke 100%" style="cursor:pointer">100%</span>
-      <button onclick="rdZoom(1)" aria-label="Perbesar">+</button>
-    </div>
+    <button class="ov-back" onclick="ovClose('player-view')" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="ov-titles"><b id="pl-title">Video</b><small id="pl-sub"></small></div>
+    <button class="ov-back" onclick="plOpenYT()" aria-label="Open in YouTube"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M14 4h6v6M20 4l-9 9M18 14v4.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 014 18.5v-11A1.5 1.5 0 015.5 6H10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
-  <div class="rd-prog"><i id="rd-bar"></i></div>
-  <div class="rd-scroll" id="rd-scroll">
-    <div class="rd-status" id="rd-status"></div>
-    <div class="rd-pages" id="rd-pages"></div>
-  </div>
-  <div class="rd-pill" id="rd-pill">
-    <button onclick="rdPage(-1)" aria-label="Halaman sebelumnya"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button class="rd-pill-t" id="rd-pill-t" onclick="rdAskPage()" aria-label="Pilih halaman">1 / 1</button>
-    <button onclick="rdPage(1)" aria-label="Halaman berikutnya"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <div class="pl-body">
+    <div class="pl-frame"><div id="pl-holder"></div><div class="pl-status" id="pl-status"></div></div>
+    <div class="pl-info" id="pl-info"></div>
   </div>
 </div>
 

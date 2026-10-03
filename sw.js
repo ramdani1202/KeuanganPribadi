@@ -30,8 +30,6 @@ const ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable.png',
-  './lib/pdf.min.mjs',
-  './lib/pdf.worker.min.mjs',
   './icons/banks/seabank.png',
   './icons/banks/bca.png',
   './icons/banks/bri.png',
@@ -78,6 +76,9 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // permintaan ke domain lain (YouTube, thumbnail) langsung ke jaringan, jangan dicegat
+  if (url.origin !== self.location.origin && event.request.url !== JSPDF_URL) return;
 
   // jsPDF: cache-first, kalau belum ada ambil dari jaringan lalu simpan
   if (event.request.url === JSPDF_URL) {
@@ -127,32 +128,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Konten Beranda (cover, daftar buku): NETWORK-FIRST supaya
-  // perubahan daftar buku di GitHub langsung muncul. Jika offline,
-  // pakai salinan terakhir yang pernah dibuka.
-  // PDF: cek server dulu, cache hanya cadangan offline (nama file yang sama
-  // boleh diganti isinya).
+  // Konten Beranda (daftar video): NETWORK-FIRST supaya perubahan di GitHub
+  // langsung muncul. Jika offline, pakai salinan terakhir yang pernah dibuka.
   if (url.origin === self.location.origin && url.pathname.includes('/content/')) {
-    const isPdf = url.pathname.toLowerCase().endsWith('.pdf');
-    const store = (resp) => {
-      // hanya respons utuh (200); respons 206 (sebagian) tidak boleh masuk cache
-      if (resp && resp.status === 200) {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-      }
-      return resp;
-    };
     event.respondWith(
-      isPdf
-        // PDF: cek ke server dulu (revalidasi ETag -- kalau file tidak berubah,
-        // server cukup balas 304 tanpa unduh ulang). Jadi mengganti isi PDF
-        // dengan NAMA YANG SAMA tetap langsung terbaca. Offline -> pakai cache.
-        ? fetch(new Request(event.request.url, { cache: 'no-cache' })).then(store).catch(() =>
-            caches.match(event.request).then((r) => r || Response.error())
-          )
-        : fetch(event.request, { cache: 'no-store' }).then(store).catch(() =>
-            caches.match(event.request).then((r) => r || Response.error())
-          )
+      fetch(event.request, { cache: 'no-store' })
+        .then((resp) => {
+          if (resp && resp.status === 200) {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return resp;
+        })
+        .catch(() => caches.match(event.request).then((r) => r || Response.error()))
     );
     return;
   }

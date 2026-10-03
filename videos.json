@@ -1,0 +1,19 @@
+{
+  "videos": [
+    {
+      "url": "https://youtu.be/dQw4w9WgXcQ",
+      "title": "Sample Video 1",
+      "author": "Your Channel",
+      "category": "Finance",
+      "desc": "Contoh. Ganti 'url' dengan link video YouTube Anda. Judul, channel, kategori, dan deskripsi boleh dikosongkan."
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+      "title": "Sample Video 2",
+      "category": "Saving"
+    },
+    {
+      "url": "https://youtu.be/9bZkp7q19f0"
+    }
+  ]
+}
