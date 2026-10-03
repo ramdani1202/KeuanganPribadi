@@ -362,10 +362,18 @@
   .rd-zoom button{ width:36px; height:36px; border-radius:50%; border:0; background:var(--paper-dim); color:var(--ink); font-size:20px; font-weight:700; line-height:1; cursor:pointer; font-family:var(--sans); }
   .rd-zoom button:active{ transform:scale(.9); }
   .rd-zoom span{ min-width:40px; text-align:center; font-size:11.5px; font-weight:800; color:var(--ink-soft); }
+  .rd-pill{ position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translate(-50%,24px); opacity:0; pointer-events:none; z-index:8;
+    display:flex; align-items:center; gap:2px; padding:4px; border-radius:999px; background:rgba(11,43,41,.92); color:#fff; box-shadow:0 12px 26px -8px rgba(0,0,0,.45);
+    transition:opacity .25s ease, transform .3s cubic-bezier(.2,.8,.2,1); }
+  .rd-pill.show{ opacity:1; transform:translate(-50%,0); pointer-events:auto; }
+  .rd-pill button{ border:0; background:none; color:#fff; height:42px; min-width:42px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--sans); font-weight:800; font-size:14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .rd-pill button:active{ background:rgba(255,255,255,.16); }
+  .rd-pill .rd-pill-t{ padding:0 14px; min-width:76px; }
   .rd-prog{ height:3px; background:var(--paper-dim); flex-shrink:0; }
   .rd-prog i{ display:block; height:100%; width:0; background:var(--in); transition:width .15s linear; }
-  .rd-scroll{ flex:1; overflow:auto; background:#D9E3E1; position:relative; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
-  .rd-pages{ width:max-content; min-width:100%; padding:12px 0 calc(40px + env(safe-area-inset-bottom)); }
+  .rd-scroll{ flex:1; overflow:auto; background:#D9E3E1; position:relative; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; -webkit-user-select:none; user-select:none; }
+  .rd-pages{ width:max-content; min-width:100%; box-sizing:border-box; padding:12px 12px calc(96px + env(safe-area-inset-bottom)); }
   .rd-page{ position:relative; margin:0 auto 12px; background:#fff; border-radius:6px; box-shadow:0 6px 18px rgba(8,32,30,.16); overflow:hidden; }
   .rd-page canvas{ display:block; position:relative; z-index:1; background:#fff; opacity:0; transition:opacity .25s ease; }
   .rd-page canvas.in{ opacity:1; }
@@ -1069,7 +1077,7 @@
     <div class="ov-titles"><b id="rd-title">Buku</b><small id="rd-sub"></small></div>
     <div class="rd-zoom">
       <button onclick="rdZoom(-1)" aria-label="Perkecil">−</button>
-      <span id="rd-zoom-label">100%</span>
+      <span id="rd-zoom-label" onclick="rdZoomReset()" title="Kembali ke 100%" style="cursor:pointer">100%</span>
       <button onclick="rdZoom(1)" aria-label="Perbesar">+</button>
     </div>
   </div>
@@ -1077,6 +1085,11 @@
   <div class="rd-scroll" id="rd-scroll">
     <div class="rd-status" id="rd-status"></div>
     <div class="rd-pages" id="rd-pages"></div>
+  </div>
+  <div class="rd-pill" id="rd-pill">
+    <button onclick="rdPage(-1)" aria-label="Halaman sebelumnya"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="rd-pill-t" id="rd-pill-t" onclick="rdAskPage()" aria-label="Pilih halaman">1 / 1</button>
+    <button onclick="rdPage(1)" aria-label="Halaman berikutnya"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
 </div>
 

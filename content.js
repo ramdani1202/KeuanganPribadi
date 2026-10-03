@@ -155,7 +155,8 @@ window.addEventListener('popstate', () => {
 /* ---------- Pembaca PDF (pdf.js, disertakan di folder lib/) ---------- */
 let pdfjs = null;
 let rd = null;
-const RD_ZOOMS = [1, 1.5, 2, 3];
+const RD_ZOOMS = [1, 1.5, 2, 3, 4];
+const RD_MIN = 1, RD_MAX = 4;
 
 async function getPdfJs(){
   if(pdfjs) return pdfjs;
@@ -197,6 +198,7 @@ function openBook(i){
   document.getElementById('rd-pages').innerHTML = '';
   document.getElementById('rd-bar').style.width = '0%';
   document.getElementById('rd-zoom-label').textContent = '100%';
+  document.getElementById('rd-pill').classList.remove('show');
   ovOpen('reader-view');
   rdLoad();
 }
@@ -260,6 +262,7 @@ function rdBuild(){
 
   const target = wrap.querySelector(`.rd-page[data-p="${rd.pendingPage}"]`);
   if(target) sc.scrollTop = target.offsetTop - 12;
+  document.getElementById('rd-pill').classList.add('show');
   rdOnScroll();
 }
 
@@ -275,9 +278,9 @@ async function rdRenderPage(p){
     if(!el) return;
     const cssW = rdPageWidth();
     const base = page.getViewport({ scale: 1 });
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
     let scale = (cssW / base.width) * dpr;
-    const maxPx = 16e6;
+    const maxPx = 12e6;
     if(base.width * base.height * scale * scale > maxPx) scale = Math.sqrt(maxPx / (base.width * base.height));
     const vp = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
@@ -322,6 +325,7 @@ function rdOnScroll(){
     }
     rd.cur = cur;
     document.getElementById('rd-sub').textContent = `Hal. ${cur} dari ${rd.n}`;
+    document.getElementById('rd-pill-t').textContent = `${cur} / ${rd.n}`;
     const max = sc.scrollHeight - sc.clientHeight;
     document.getElementById('rd-bar').style.width = (max > 0 ? Math.min(100, sc.scrollTop / max * 100) : 0) + '%';
     clearTimeout(rd.saveT);
@@ -336,22 +340,76 @@ function rdSaveProgress(r){
   try{ localStorage.setItem(`cu_read_${currentUser}_${r.book.id}`, JSON.stringify({ p:r.cur, n:r.n })); }catch(_){}
 }
 
+function rdRenderVisible(){
+  if(!rd || !rd.n) return;
+  const sc = document.getElementById('rd-scroll');
+  const top = sc.scrollTop - 700, bot = sc.scrollTop + sc.clientHeight + 700;
+  document.querySelectorAll('#rd-pages .rd-page').forEach(el => {
+    const t = el.offsetTop, b = t + el.offsetHeight;
+    if(b >= top && t <= bot) rdRenderPage(Number(el.dataset.p));
+  });
+}
+
+/* Ubah zoom (kontinu 100%-400%) dengan titik fokus (cx,cy) = posisi di layar
+   yang harus tetap berada di bawah jari / tengah layar. */
+function rdSetZoom(newZ, cx, cy, force){
+  if(!rd || !rd.n) return;
+  newZ = Math.max(RD_MIN, Math.min(RD_MAX, newZ));
+  const label = document.getElementById('rd-zoom-label');
+  if(!force && Math.abs(newZ - rd.zoom) < 0.01){ label.textContent = Math.round(rd.zoom * 100) + '%'; return; }
+  const sc = document.getElementById('rd-scroll');
+  const pages = Array.from(document.querySelectorAll('#rd-pages .rd-page'));
+  if(!pages.length) return;
+  if(cx == null) cx = sc.clientWidth / 2;
+  if(cy == null) cy = sc.clientHeight / 2;
+
+  // titik fokus dicatat relatif terhadap halaman di bawahnya (tahan terhadap jarak antar halaman)
+  const y = sc.scrollTop + cy;
+  let ap = pages[0];
+  for(const p of pages){ if(p.offsetTop <= y) ap = p; else break; }
+  const fy = (y - ap.offsetTop) / Math.max(1, ap.offsetHeight);
+  const fx = (sc.scrollLeft + cx - ap.offsetLeft) / Math.max(1, ap.offsetWidth);
+
+  rd.zoom = newZ;
+  label.textContent = Math.round(newZ * 100) + '%';
+  Array.from(rd.rendered.keys()).forEach(rdUnrenderPage);
+  const w = rdPageWidth(), h = Math.round(w * rd.ratio);
+  pages.forEach(el => { el.style.width = w + 'px'; el.style.height = h + 'px'; });
+
+  sc.scrollTop = ap.offsetTop + fy * ap.offsetHeight - cy;
+  sc.scrollLeft = ap.offsetLeft + fx * ap.offsetWidth - cx;
+  rdRenderVisible();
+  rdOnScroll();
+}
+
 function rdZoom(dir){
   if(!rd || !rd.n) return;
-  let k = RD_ZOOMS.indexOf(rd.zoom) + dir;
-  k = Math.max(0, Math.min(RD_ZOOMS.length - 1, k));
-  if(RD_ZOOMS[k] === rd.zoom) return;
-  rd.pendingPage = rd.cur;
-  rd.zoom = RD_ZOOMS[k];
-  document.getElementById('rd-zoom-label').textContent = Math.round(rd.zoom * 100) + '%';
-  Array.from(rd.rendered.keys()).forEach(rdUnrenderPage);
-  rdBuild();
+  const cur = rd.zoom;
+  const next = dir > 0
+    ? (RD_ZOOMS.find(z => z > cur + 0.02) || RD_MAX)
+    : ([...RD_ZOOMS].reverse().find(z => z < cur - 0.02) || RD_MIN);
+  rdSetZoom(next);
+}
+function rdZoomReset(){ rdSetZoom(1); }
+
+function rdScrollToPage(p){
+  if(!rd || !rd.n) return;
+  p = Math.max(1, Math.min(rd.n, p));
+  const el = document.querySelector(`#rd-pages .rd-page[data-p="${p}"]`);
+  if(el) document.getElementById('rd-scroll').scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' });
+}
+function rdPage(dir){ if(rd) rdScrollToPage(rd.cur + dir); }
+function rdAskPage(){
+  if(!rd || !rd.n) return;
+  const v = parseInt(prompt(`Ke halaman berapa? (1-${rd.n})`, String(rd.cur)), 10);
+  if(v) rdScrollToPage(v);
 }
 
 function readerCleanup(){
   const r = rd;
   if(!r) return;
   rdSaveProgress(r);
+  const pill = document.getElementById('rd-pill'); if(pill) pill.classList.remove('show');
   clearTimeout(r.saveT);
   if(r.io) r.io.disconnect();
   Array.from(r.rendered.keys()).forEach(p => { const s = r.rendered.get(p); try{ if(s.task) s.task.cancel(); }catch(_){} if(s.canvas){ s.canvas.width = 0; } });
@@ -364,6 +422,65 @@ function readerCleanup(){
 
 (function(){
   const sc = document.getElementById('rd-scroll');
-  if(sc) sc.addEventListener('scroll', rdOnScroll, { passive:true });
+  if(!sc) return;
+  sc.addEventListener('scroll', rdOnScroll, { passive:true });
+
+  /* ---- Gestur: cubit untuk zoom, ketuk 2x untuk zoom cepat, geser ke segala arah ---- */
+  const pagesEl = () => document.getElementById('rd-pages');
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  let pinch = null, tapStart = null, lastTap = { t:0, x:0, y:0 };
+
+  sc.addEventListener('touchstart', (e) => {
+    if(!rd || !rd.n) return;
+    if(e.touches.length === 2){
+      const r = sc.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      pinch = { d0: dist(e.touches), z0: rd.zoom, cx, cy, k: 1 };
+      const pg = pagesEl();
+      pg.style.transformOrigin = `${sc.scrollLeft + cx}px ${sc.scrollTop + cy}px`;
+      pg.style.willChange = 'transform';
+      tapStart = null;
+    } else if(e.touches.length === 1){
+      tapStart = { x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now() };
+    } else { tapStart = null; }
+  }, { passive:true });
+
+  sc.addEventListener('touchmove', (e) => {
+    if(!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const k = Math.max(RD_MIN / pinch.z0, Math.min(RD_MAX / pinch.z0, dist(e.touches) / pinch.d0));
+    pinch.k = k;
+    pagesEl().style.transform = `scale(${k})`;
+  }, { passive:false });
+
+  const endPinch = (e) => {
+    if(!pinch || e.touches.length >= 2) return;
+    const p = pinch; pinch = null;
+    const pg = pagesEl();
+    pg.style.transform = ''; pg.style.transformOrigin = ''; pg.style.willChange = '';
+    rdSetZoom(p.z0 * p.k, p.cx, p.cy);
+  };
+  sc.addEventListener('touchend', (e) => {
+    if(pinch){ endPinch(e); return; }
+    if(!rd || !rd.n || e.touches.length || e.changedTouches.length !== 1) return;
+    const t = e.changedTouches[0], now = Date.now();
+    if(!tapStart || Math.hypot(t.clientX - tapStart.x, t.clientY - tapStart.y) > 12 || now - tapStart.t > 300){ lastTap.t = 0; return; }
+    if(now - lastTap.t < 320 && Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) < 40){
+      lastTap.t = 0;
+      const r = sc.getBoundingClientRect();
+      rdSetZoom(rd.zoom > 1.2 ? 1 : 2.5, t.clientX - r.left, t.clientY - r.top);
+    } else {
+      lastTap = { t:now, x:t.clientX, y:t.clientY };
+    }
+  }, { passive:true });
+  sc.addEventListener('touchcancel', endPinch, { passive:true });
+
+  // putar layar / ubah ukuran -> susun ulang lebar halaman
+  let rzT = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzT);
+    rzT = setTimeout(() => { if(rd && rd.n) rdSetZoom(rd.zoom, null, null, true); }, 200);
+  });
 })();
 if(typeof currentUser !== 'undefined' && currentUser) loadHomeContent();
