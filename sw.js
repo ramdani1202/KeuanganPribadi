@@ -101,6 +101,8 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/app.js') ||
     url.pathname.endsWith('/content.js') ||
     url.pathname.endsWith('/manifest.json') ||
+    url.pathname.endsWith('/videos.json') ||
+    url.pathname.endsWith('/vidio.json') ||
     url.pathname.endsWith('/index.html');
 
   if (isCoreFile) {

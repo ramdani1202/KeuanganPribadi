@@ -1,11 +1,12 @@
 /* =========================================================
    KONTEN BERANDA: Video YouTube
    Daftar video Anda unggah lewat GitHub (tanpa server):
-     content/videos.json  -> daftar link video YouTube
+     videos.json  -> daftar link video YouTube (di root repo)
    Thumbnail otomatis dari YouTube. Video hanya tampil
    (diputar) saat perangkat online.
    ========================================================= */
-const CX_URL = 'content/videos.json';
+// daftar video dicari di root dulu, lalu di folder content/ (nama file harus videos.json)
+const CX_URLS = ['videos.json', 'content/videos.json', 'vidio.json', 'content/vidio.json'];
 const CX_COVER_COLORS = [['#14B8A6','#0A6E64'],['#E9776A','#B23F33'],['#4F81E6','#2846AA'],['#F0AA3C','#C86E1E'],['#8E5CF0','#5032AA']];
 
 let cx = { tab:'all', libTab:'all', detail:null, libOpen:false, rateOpen:false, videos:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
@@ -98,13 +99,16 @@ async function loadHomeContent(force){
   }
   cx.loading = true;
   if(!cx.loadedAt) renderHomeContent(true);
-  try{
-    const j = await cxFetchJSON(CX_URL);
-    cx.videos = cxSanitize(j && j.videos);
-    cx.failed = false;
-  }catch(_){
-    cx.failed = !cx.videos;
+  let ok = false;
+  for(const u of CX_URLS){
+    try{
+      const j = await cxFetchJSON(u);
+      cx.videos = cxSanitize(j && j.videos);
+      cx.failed = false; ok = true;
+      break;
+    }catch(_){}
   }
+  if(!ok) cx.failed = !cx.videos;
   cx.loadedAt = Date.now();
   cx.loading = false;
   renderHomeContent(false);
