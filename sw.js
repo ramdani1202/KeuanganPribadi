@@ -25,6 +25,7 @@ const ASSETS = [
   './',
   './index.html',
   './app.js',
+  './content.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -95,6 +96,7 @@ self.addEventListener('fetch', (event) => {
   const isCoreFile =
     event.request.mode === 'navigate' ||
     url.pathname.endsWith('/app.js') ||
+    url.pathname.endsWith('/content.js') ||
     url.pathname.endsWith('/manifest.json') ||
     url.pathname.endsWith('/index.html');
 
@@ -119,6 +121,31 @@ self.addEventListener('fetch', (event) => {
             r || (event.request.mode === 'navigate' ? caches.match('./index.html') : Response.error())
           )
         )
+    );
+    return;
+  }
+
+  // Konten Beranda (berita, gambar, daftar buku): NETWORK-FIRST supaya
+  // berita baru yang Anda upload ke GitHub langsung muncul. Jika offline,
+  // pakai salinan terakhir yang pernah dibuka.
+  // PDF: CACHE-FIRST (file besar, jarang berubah). Kalau Anda mengganti isi
+  // PDF, beri nama file baru supaya perangkat mengunduh versi barunya.
+  if (url.origin === self.location.origin && url.pathname.includes('/content/')) {
+    const isPdf = url.pathname.toLowerCase().endsWith('.pdf');
+    const store = (resp) => {
+      // hanya respons utuh (200); respons 206 (sebagian) tidak boleh masuk cache
+      if (resp && resp.status === 200) {
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return resp;
+    };
+    event.respondWith(
+      isPdf
+        ? caches.match(event.request).then((cached) => cached || fetch(event.request).then(store))
+        : fetch(event.request, { cache: 'no-store' }).then(store).catch(() =>
+            caches.match(event.request).then((r) => r || Response.error())
+          )
     );
     return;
   }

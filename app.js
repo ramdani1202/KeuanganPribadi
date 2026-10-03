@@ -767,6 +767,7 @@ function refreshHome(){
   document.getElementById('home-name').textContent = currentUser || '-';
   refreshAvatars();
   renderHomeChart();
+  if(typeof loadHomeContent === 'function') loadHomeContent();
 }
 
 /* =========================================================

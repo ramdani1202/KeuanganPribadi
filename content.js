@@ -1,0 +1,462 @@
+/* =========================================================
+   KONTEN BERANDA: Berita & Buku PDF
+   Semua isi diunggah lewat GitHub (tanpa server):
+     content/news.json   -> daftar berita
+     content/books.json  -> daftar buku PDF
+   Gambar & PDF disimpan di content/news/ dan content/books/
+   ========================================================= */
+const CX_NEWS_URL = 'content/news.json';
+const CX_BOOKS_URL = 'content/books.json';
+const CX_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const CX_MONTHS_FULL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const CX_DAYS_FULL = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const CX_COVER_COLORS = [['#14B8A6','#0A6E64'],['#E9776A','#B23F33'],['#4F81E6','#2846AA'],['#F0AA3C','#C86E1E'],['#8E5CF0','#5032AA']];
+
+let cx = { news:null, books:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
+
+/* ---------- Pembersih data JSON (jangan percaya isi file mentah) ---------- */
+function cxStr(v, max){ return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').slice(0, max); }
+function cxSafeUrl(u){
+  if(typeof u !== 'string') return '';
+  u = u.trim();
+  if(!u || u.length > 300) return '';
+  if(/^https:\/\/[^\s"'<>]+$/i.test(u)) return u;
+  if(/^[A-Za-z0-9_\-.\/ %()]+$/.test(u) && !u.includes('..') && !u.startsWith('/')) return u;
+  return '';
+}
+function cxHref(u){ try{ return encodeURI(decodeURI(u)); }catch(_){ return encodeURI(u); } } // aman untuk atribut src/href
+function cxDate(s){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+  if(!m) return '';
+  const mo = Number(m[2]) - 1;
+  if(mo < 0 || mo > 11) return '';
+  return `${Number(m[3])} ${CX_MONTHS[mo]} ${m[1]}`;
+}
+function cxId(v, i, prefix){ const s = String(v == null ? '' : v); return /^[A-Za-z0-9_-]{1,40}$/.test(s) ? s : prefix + i; }
+
+function cxSanitizeNews(list){
+  if(!Array.isArray(list)) return [];
+  const out = [];
+  list.slice(0, 60).forEach((n, i) => {
+    if(!n || typeof n !== 'object') return;
+    const title = cxStr(n.title, 200).trim();
+    if(!title) return;
+    let body = [];
+    if(Array.isArray(n.body)) body = n.body.map(p => cxStr(p, 4000).trim()).filter(Boolean);
+    else if(typeof n.body === 'string') body = n.body.split(/\n{2,}/).map(p => cxStr(p, 4000).trim()).filter(Boolean);
+    const link = typeof n.link === 'string' && /^https:\/\/[^\s"'<>]+$/i.test(n.link.trim()) ? n.link.trim() : '';
+    out.push({
+      id: cxId(n.id, i, 'n'), title, source: cxStr(n.source, 40).trim() || 'Berita',
+      date: cxDate(n.date), image: cxSafeUrl(n.image), summary: cxStr(n.summary, 300).trim(),
+      body: body.slice(0, 80), link
+    });
+  });
+  return out;
+}
+function cxSanitizeBooks(list){
+  if(!Array.isArray(list)) return [];
+  const out = [];
+  list.slice(0, 60).forEach((b, i) => {
+    if(!b || typeof b !== 'object') return;
+    const title = cxStr(b.title, 120).trim();
+    const file = cxSafeUrl(b.file);
+    if(!title || !file || !/\.pdf$/i.test(file.split('?')[0])) return;
+    out.push({ id: cxId(b.id, i, 'b'), title, author: cxStr(b.author, 80).trim(), cover: cxSafeUrl(b.cover), file, desc: cxStr(b.desc, 300).trim() });
+  });
+  return out;
+}
+
+/* ---------- Ambil data ---------- */
+async function cxFetchJSON(url){
+  const r = await fetch(url, { cache: 'no-cache' });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function loadHomeContent(force){
+  if(cx.loading) return;
+  if(!force && cx.loadedAt && Date.now() - cx.loadedAt < 60000){
+    if(cx.user !== currentUser) renderHomeContent(false); // ganti akun -> bar progres baca ikut berganti
+    return;
+  }
+  cx.loading = true;
+  if(!cx.loadedAt) renderHomeContent(true);
+  const [n, b] = await Promise.allSettled([cxFetchJSON(CX_NEWS_URL), cxFetchJSON(CX_BOOKS_URL)]);
+  if(n.status === 'fulfilled') cx.news = cxSanitizeNews(n.value && n.value.news);
+  if(b.status === 'fulfilled') cx.books = cxSanitizeBooks(b.value && b.value.books);
+  cx.failed = n.status === 'rejected' && b.status === 'rejected' && !cx.news && !cx.books;
+  cx.loadedAt = Date.now();
+  cx.loading = false;
+  renderHomeContent(false);
+}
+
+/* ---------- Tampilan Beranda ---------- */
+const CX_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function cxImgHTML(src, cls, fallbackText, i){
+  const [c1, c2] = CX_COVER_COLORS[i % CX_COVER_COLORS.length];
+  const fb = `<span class="cx-fb" style="background:linear-gradient(135deg,${c1},${c2})">${escapeHtml((fallbackText || '?').trim().charAt(0).toUpperCase())}</span>`;
+  if(!src) return `<div class="${cls}">${fb}</div>`;
+  return `<div class="${cls}">${fb}<img src="${escapeHtml(cxHref(src))}" alt="" loading="lazy" onerror="this.remove()"></div>`;
+}
+
+function cxNewsBigCard(n, i){
+  return `<article class="cx-news-big" style="animation-delay:${i*60}ms" onclick="openNews(${i})">
+    ${cxImgHTML(n.image, 'cx-img wide', n.source, i)}
+    <div class="cx-meta"><span class="cx-src">${escapeHtml(n.source)}</span></div>
+    <h3 class="cx-title">${escapeHtml(n.title)}</h3>
+    <div class="cx-date">${escapeHtml(n.date)}</div>
+  </article>`;
+}
+function cxNewsSmallCard(n, i, idx){
+  return `<article class="cx-news-small" style="animation-delay:${idx*50}ms" onclick="openNews(${i})">
+    ${cxImgHTML(n.image, 'cx-img sq', n.source, i)}
+    <div class="cx-meta"><span class="cx-src">${escapeHtml(n.source)}</span></div>
+    <h3 class="cx-title sm">${escapeHtml(n.title)}</h3>
+    <div class="cx-date">${escapeHtml(n.date)}</div>
+  </article>`;
+}
+
+function cxReadInfo(id){
+  try{
+    const v = JSON.parse(localStorage.getItem(`cu_read_${currentUser}_${id}`) || 'null');
+    if(v && v.p > 0 && v.n > 0) return v;
+  }catch(_){}
+  return null;
+}
+
+function cxBookCard(b, i){
+  const [c1, c2] = CX_COVER_COLORS[i % CX_COVER_COLORS.length];
+  const info = cxReadInfo(b.id);
+  const pct = info ? Math.min(100, Math.round(info.p / info.n * 100)) : 0;
+  const cover = b.cover
+    ? `<img src="${escapeHtml(cxHref(b.cover))}" alt="" loading="lazy" onerror="this.remove()">`
+    : '';
+  return `<div class="cx-book" style="animation-delay:${i*60}ms" onclick="openBook(${i})">
+    <div class="cx-cover" style="background:linear-gradient(145deg,${c1},${c2})">
+      <span class="cx-cover-t">${escapeHtml(b.title)}</span>${cover}
+      <span class="cx-pdf-tag">PDF</span>
+    </div>
+    <div class="cx-btitle">${escapeHtml(b.title)}</div>
+    <div class="cx-bauthor">${b.author ? escapeHtml(b.author) : '&nbsp;'}</div>
+    ${info ? `<div class="cx-prog"><i style="width:${pct}%"></i></div><div class="cx-prog-t">Hal. ${info.p} dari ${info.n}</div>` : ''}
+  </div>`;
+}
+
+function renderHomeContent(loadingOnly){
+  const newsEl = document.getElementById('cx-news');
+  const booksEl = document.getElementById('cx-books');
+  if(!newsEl || !booksEl) return;
+  cx.user = (typeof currentUser !== 'undefined') ? currentUser : null;
+
+  // simpan posisi geser tiap baris supaya tidak melompat ke awal saat digambar ulang
+  const keep = Array.from(document.querySelectorAll('#cx-news .cx-row, #cx-books .cx-row')).map(r => r.scrollLeft);
+  const restore = () => document.querySelectorAll('#cx-news .cx-row, #cx-books .cx-row').forEach((r, i) => { if(keep[i]) r.scrollLeft = keep[i]; });
+  newsEl.classList.toggle('cx-noanim', cx.drawn);
+  booksEl.classList.toggle('cx-noanim', cx.drawn);
+
+  if(loadingOnly){
+    const sk = '<div class="cx-skel"></div>';
+    newsEl.innerHTML = `<div class="cx-head"><small>&nbsp;</small><h2>Berita</h2></div><div class="cx-row">${sk}${sk}</div>`;
+    booksEl.innerHTML = '';
+    return;
+  }
+
+  if(cx.failed){
+    newsEl.innerHTML = `<div class="cx-note">Berita &amp; buku belum bisa dimuat. Periksa koneksi internet, lalu <button onclick="loadHomeContent(true)">coba lagi</button>.</div>`;
+    booksEl.innerHTML = '';
+    cx.drawn = true;
+    return;
+  }
+
+  // ----- Berita -----
+  if(cx.news && cx.news.length){
+    const d = new Date();
+    const dateLine = `${CX_DAYS_FULL[d.getDay()]}, ${d.getDate()} ${CX_MONTHS_FULL[d.getMonth()]}`;
+    const feat = cx.news.slice(0, 3);
+    const rest = cx.news.slice(3);
+    let html = `<div class="cx-head"><small>${dateLine}</small><h2>Berita</h2></div>
+      <div class="cx-row">${feat.map((n, i) => cxNewsBigCard(n, i)).join('')}</div>`;
+    if(rest.length){
+      html += `<div class="cx-sub">Berita lainnya ${CX_CHEV}</div>
+      <div class="cx-row">${rest.map((n, k) => cxNewsSmallCard(n, k + 3, k)).join('')}</div>`;
+    }
+    newsEl.innerHTML = html;
+  } else {
+    newsEl.innerHTML = '';
+  }
+
+  // ----- Buku PDF -----
+  if(cx.books && cx.books.length){
+    booksEl.innerHTML = `<div class="cx-head row"><div><small>${cx.books.length} buku · baca langsung</small><h2>Buku PDF</h2></div><span class="cx-swipe">Geser ${CX_CHEV}</span></div>
+      <div class="cx-row books">${cx.books.map((b, i) => cxBookCard(b, i)).join('')}</div>`;
+  } else {
+    booksEl.innerHTML = '';
+  }
+  cx.drawn = true;
+  restore();
+}
+
+/* ---------- Overlay (berita & pembaca) + tombol Kembali Android ---------- */
+const ovStack = [];
+let ovHistoryOk = true;
+function ovOpen(id){
+  const el = document.getElementById(id);
+  el.classList.add('show');
+  void el.offsetWidth;
+  el.classList.add('active');
+  ovStack.push(id);
+  try{ history.pushState({ ov:id }, ''); }catch(_){ ovHistoryOk = false; }
+}
+function ovHide(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('active');
+  setTimeout(() => { if(!el.classList.contains('active')) el.classList.remove('show'); }, 380);
+  if(id === 'reader-view') readerCleanup();
+}
+function ovClose(id){
+  const i = ovStack.lastIndexOf(id);
+  if(i === -1){ ovHide(id); return; }
+  if(ovHistoryOk && i === ovStack.length - 1){ history.back(); return; }
+  ovStack.splice(i, 1);
+  ovHide(id);
+}
+window.addEventListener('popstate', () => {
+  const top = ovStack.pop();
+  if(top) ovHide(top);
+});
+
+/* ---------- Detail berita ---------- */
+function openNews(i){
+  const n = cx.news && cx.news[i];
+  if(!n) return;
+  const hero = n.image
+    ? `<div class="nv-hero"><img src="${escapeHtml(cxHref(n.image))}" alt="" onerror="this.parentNode.remove()"></div>`
+    : '';
+  const body = (n.body.length ? n.body : (n.summary ? [n.summary] : [])).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+  const link = n.link ? `<a class="nv-link" href="${escapeHtml(n.link)}" target="_blank" rel="noopener noreferrer">Baca selengkapnya ${CX_CHEV}</a>` : '';
+  document.getElementById('nv-scroll').innerHTML = `${hero}
+    <div class="nv-body">
+      <div class="nv-meta"><span class="cx-src">${escapeHtml(n.source)}</span>${n.date ? `<span>${escapeHtml(n.date)}</span>` : ''}</div>
+      <h1>${escapeHtml(n.title)}</h1>
+      ${body}${link}
+    </div>`;
+  document.getElementById('nv-scroll').scrollTop = 0;
+  ovOpen('news-view');
+}
+
+/* ---------- Pembaca PDF (pdf.js, disertakan di folder lib/) ---------- */
+let pdfjs = null;
+let rd = null;
+const RD_ZOOMS = [1, 1.5, 2, 3];
+
+async function getPdfJs(){
+  if(pdfjs) return pdfjs;
+  const mod = await import('./lib/pdf.min.mjs');
+  mod.GlobalWorkerOptions.workerSrc = new URL('lib/pdf.worker.min.mjs', document.baseURI).href;
+  pdfjs = mod;
+  return mod;
+}
+
+async function cxFetchBytes(url, onProgress){
+  const resp = await fetch(cxHref(url));
+  if(!resp.ok) throw new Error('HTTP ' + resp.status);
+  const total = Number(resp.headers.get('Content-Length')) || 0;
+  if(!resp.body || !resp.body.getReader) return new Uint8Array(await resp.arrayBuffer());
+  const reader = resp.body.getReader();
+  const chunks = []; let got = 0;
+  for(;;){
+    const { done, value } = await reader.read();
+    if(done) break;
+    chunks.push(value); got += value.length;
+    onProgress(total ? Math.min(1, got / total) : null, got);
+  }
+  const out = new Uint8Array(got); let off = 0;
+  for(const c of chunks){ out.set(c, off); off += c.length; }
+  return out;
+}
+
+function rdSetStatus(html){
+  document.getElementById('rd-status').innerHTML = html || '';
+  document.getElementById('rd-status').style.display = html ? 'flex' : 'none';
+}
+
+function openBook(i){
+  const b = cx.books && cx.books[i];
+  if(!b) return;
+  rd = { book:b, idx:i, doc:null, n:0, zoom:1, ratio:1.414, rendered:new Map(), io:null, cur:1, saveT:null, token:Symbol(), pendingPage:1 };
+  document.getElementById('rd-title').textContent = b.title;
+  document.getElementById('rd-sub').textContent = b.author || 'Memuat…';
+  document.getElementById('rd-pages').innerHTML = '';
+  document.getElementById('rd-bar').style.width = '0%';
+  document.getElementById('rd-zoom-label').textContent = '100%';
+  ovOpen('reader-view');
+  rdLoad();
+}
+
+async function rdLoad(){
+  const my = rd; if(!my) return;
+  rdSetStatus('<div class="rd-spin"></div><div class="rd-stxt" id="rd-stxt">Memuat buku…</div>');
+  try{
+    const [lib, bytes] = await Promise.all([
+      getPdfJs(),
+      cxFetchBytes(my.book.file, (p, got) => {
+        const t = document.getElementById('rd-stxt');
+        if(t && rd === my) t.textContent = p != null ? `Memuat buku… ${Math.round(p*100)}%` : `Memuat buku… ${(got/1048576).toFixed(1)} MB`;
+      })
+    ]);
+    if(rd !== my) return;
+    const task = lib.getDocument({
+      data: bytes, isEvalSupported: false,
+      wasmUrl: new URL('lib/wasm/', document.baseURI).href
+    });
+    my.doc = await task.promise;
+    if(rd !== my){ my.doc.destroy(); return; }
+    my.n = my.doc.numPages;
+    const first = await my.doc.getPage(1);
+    const vp = first.getViewport({ scale: 1 });
+    my.ratio = vp.height / vp.width;
+    const saved = cxReadInfo(my.book.id);
+    my.pendingPage = saved ? Math.min(saved.p, my.n) : 1;
+    rdBuild();
+    rdSetStatus('');
+  }catch(e){
+    if(rd !== my) return;
+    console.error(e);
+    rdSetStatus(`<div class="rd-err">Buku tidak bisa dibuka.<br><small>Periksa koneksi internet atau nama file PDF-nya.</small></div><button class="rd-retry" onclick="rdLoad()">Coba lagi</button>`);
+  }
+}
+
+function rdPageWidth(){
+  const sc = document.getElementById('rd-scroll');
+  return Math.max(200, Math.floor((sc.clientWidth - 24) * rd.zoom));
+}
+
+function rdBuild(){
+  const wrap = document.getElementById('rd-pages');
+  const w = rdPageWidth();
+  let html = '';
+  for(let p = 1; p <= rd.n; p++) html += `<div class="rd-page" data-p="${p}" style="width:${w}px;height:${Math.round(w*rd.ratio)}px"><span class="rd-pn">${p}</span></div>`;
+  wrap.innerHTML = html;
+  document.getElementById('rd-sub').textContent = `Hal. ${rd.pendingPage} dari ${rd.n}`;
+
+  const sc = document.getElementById('rd-scroll');
+  if(rd.io) rd.io.disconnect();
+  rd.io = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      const p = Number(en.target.dataset.p);
+      if(en.isIntersecting) rdRenderPage(p);
+      else rdUnrenderPage(p);
+    });
+  }, { root: sc, rootMargin: '700px 0px' });
+  wrap.querySelectorAll('.rd-page').forEach(el => rd.io.observe(el));
+
+  const target = wrap.querySelector(`.rd-page[data-p="${rd.pendingPage}"]`);
+  if(target) sc.scrollTop = target.offsetTop - 12;
+  rdOnScroll();
+}
+
+async function rdRenderPage(p){
+  const my = rd; if(!my || !my.doc) return;
+  if(my.rendered.has(p)) return;
+  const slot = { canvas:null, task:null, zoom:my.zoom };
+  my.rendered.set(p, slot);
+  try{
+    const page = await my.doc.getPage(p);
+    if(rd !== my || my.rendered.get(p) !== slot) return;
+    const el = document.querySelector(`#rd-pages .rd-page[data-p="${p}"]`);
+    if(!el) return;
+    const cssW = rdPageWidth();
+    const base = page.getViewport({ scale: 1 });
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    let scale = (cssW / base.width) * dpr;
+    const maxPx = 16e6;
+    if(base.width * base.height * scale * scale > maxPx) scale = Math.sqrt(maxPx / (base.width * base.height));
+    const vp = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = Math.round(cssW * base.height / base.width) + 'px';
+    slot.canvas = canvas;
+    slot.task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+    await slot.task.promise;
+    if(rd !== my || my.rendered.get(p) !== slot) return;
+    el.style.height = canvas.style.height;
+    el.appendChild(canvas);
+    requestAnimationFrame(() => canvas.classList.add('in'));
+  }catch(e){
+    if(e && e.name === 'RenderingCancelledException') return;
+    if(my.rendered.get(p) === slot) my.rendered.delete(p);
+  }
+}
+
+function rdUnrenderPage(p){
+  if(!rd) return;
+  const slot = rd.rendered.get(p);
+  if(!slot) return;
+  try{ if(slot.task) slot.task.cancel(); }catch(_){}
+  if(slot.canvas){ slot.canvas.width = 0; slot.canvas.remove(); }
+  rd.rendered.delete(p);
+}
+
+let rdScrollRaf = 0;
+function rdOnScroll(){
+  if(!rd || !rd.n) return;
+  if(rdScrollRaf) return;
+  rdScrollRaf = requestAnimationFrame(() => {
+    rdScrollRaf = 0;
+    if(!rd || !rd.n) return;
+    const sc = document.getElementById('rd-scroll');
+    const line = sc.scrollTop + sc.clientHeight * 0.35;
+    const pages = document.querySelectorAll('#rd-pages .rd-page');
+    let cur = 1;
+    for(let i = 0; i < pages.length; i++){
+      if(pages[i].offsetTop <= line) cur = i + 1; else break;
+    }
+    rd.cur = cur;
+    document.getElementById('rd-sub').textContent = `Hal. ${cur} dari ${rd.n}`;
+    const max = sc.scrollHeight - sc.clientHeight;
+    document.getElementById('rd-bar').style.width = (max > 0 ? Math.min(100, sc.scrollTop / max * 100) : 0) + '%';
+    clearTimeout(rd.saveT);
+    const snap = rd;
+    rd.saveT = setTimeout(() => rdSaveProgress(snap), 500);
+  });
+}
+
+function rdSaveProgress(r){
+  r = r || rd;
+  if(!r || !r.n || !r.book) return;
+  try{ localStorage.setItem(`cu_read_${currentUser}_${r.book.id}`, JSON.stringify({ p:r.cur, n:r.n })); }catch(_){}
+}
+
+function rdZoom(dir){
+  if(!rd || !rd.n) return;
+  let k = RD_ZOOMS.indexOf(rd.zoom) + dir;
+  k = Math.max(0, Math.min(RD_ZOOMS.length - 1, k));
+  if(RD_ZOOMS[k] === rd.zoom) return;
+  rd.pendingPage = rd.cur;
+  rd.zoom = RD_ZOOMS[k];
+  document.getElementById('rd-zoom-label').textContent = Math.round(rd.zoom * 100) + '%';
+  Array.from(rd.rendered.keys()).forEach(rdUnrenderPage);
+  rdBuild();
+}
+
+function readerCleanup(){
+  const r = rd;
+  if(!r) return;
+  rdSaveProgress(r);
+  clearTimeout(r.saveT);
+  if(r.io) r.io.disconnect();
+  Array.from(r.rendered.keys()).forEach(p => { const s = r.rendered.get(p); try{ if(s.task) s.task.cancel(); }catch(_){} if(s.canvas){ s.canvas.width = 0; } });
+  r.rendered.clear();
+  try{ if(r.doc) r.doc.destroy(); }catch(_){}
+  rd = null;
+  setTimeout(() => { if(!rd){ document.getElementById('rd-pages').innerHTML = ''; } }, 420);
+  if(typeof currentData !== 'undefined' && currentData) renderHomeContent(false); // perbarui bar progres di kartu buku
+}
+
+(function(){
+  const sc = document.getElementById('rd-scroll');
+  if(sc) sc.addEventListener('scroll', rdOnScroll, { passive:true });
+})();
+if(typeof currentUser !== 'undefined' && currentUser) loadHomeContent();
