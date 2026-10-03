@@ -2,8 +2,8 @@
   "books": [
     {
       "id": "b1",
-      "title": "Panduan Keuangan Pribadi",
-      "author": "MoneyPri",
+      "title": "Rich Dad Poor Dad",
+      "author": "Robert T Kiyosaki",
       "cover": "content/books/b1.jpg",
       "file": "content/books/b1.pdf",
       "desc": "Contoh buku. Ganti dengan buku PDF Anda sendiri."
