@@ -30,6 +30,8 @@ const ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable.png',
+  './lib/pdf.min.mjs',
+  './lib/pdf.worker.min.mjs',
   './icons/banks/seabank.png',
   './icons/banks/bca.png',
   './icons/banks/bri.png',
@@ -128,8 +130,8 @@ self.addEventListener('fetch', (event) => {
   // Konten Beranda (berita, gambar, daftar buku): NETWORK-FIRST supaya
   // berita baru yang Anda upload ke GitHub langsung muncul. Jika offline,
   // pakai salinan terakhir yang pernah dibuka.
-  // PDF: CACHE-FIRST (file besar, jarang berubah). Kalau Anda mengganti isi
-  // PDF, beri nama file baru supaya perangkat mengunduh versi barunya.
+  // PDF: cek server dulu, cache hanya cadangan offline (nama file yang sama
+  // boleh diganti isinya).
   if (url.origin === self.location.origin && url.pathname.includes('/content/')) {
     const isPdf = url.pathname.toLowerCase().endsWith('.pdf');
     const store = (resp) => {
@@ -142,7 +144,12 @@ self.addEventListener('fetch', (event) => {
     };
     event.respondWith(
       isPdf
-        ? caches.match(event.request).then((cached) => cached || fetch(event.request).then(store))
+        // PDF: cek ke server dulu (revalidasi ETag -- kalau file tidak berubah,
+        // server cukup balas 304 tanpa unduh ulang). Jadi mengganti isi PDF
+        // dengan NAMA YANG SAMA tetap langsung terbaca. Offline -> pakai cache.
+        ? fetch(new Request(event.request.url, { cache: 'no-cache' })).then(store).catch(() =>
+            caches.match(event.request).then((r) => r || Response.error())
+          )
         : fetch(event.request, { cache: 'no-store' }).then(store).catch(() =>
             caches.match(event.request).then((r) => r || Response.error())
           )
