@@ -7,7 +7,7 @@
 const CX_BOOKS_URL = 'content/books.json';
 const CX_COVER_COLORS = [['#14B8A6','#0A6E64'],['#E9776A','#B23F33'],['#4F81E6','#2846AA'],['#F0AA3C','#C86E1E'],['#8E5CF0','#5032AA']];
 
-let cx = { books:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
+let cx = { tab:'all', libTab:'all', detail:null, libOpen:false, books:null, loadedAt:0, loading:false, failed:false, user:null, drawn:false };
 
 /* ---------- Pembersih data JSON (jangan percaya isi file mentah) ---------- */
 function cxStr(v, max){ return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').slice(0, max); }
@@ -30,7 +30,7 @@ function cxSanitizeBooks(list){
     const title = cxStr(b.title, 120).trim();
     const file = cxSafeUrl(b.file);
     if(!title || !file || !/\.pdf$/i.test(file.split('?')[0])) return;
-    out.push({ id: cxId(b.id, i, 'b'), title, author: cxStr(b.author, 80).trim(), cover: cxSafeUrl(b.cover), file, desc: cxStr(b.desc, 300).trim() });
+    out.push({ id: cxId(b.id, i, 'b'), title, author: cxStr(b.author, 80).trim(), cover: cxSafeUrl(b.cover), file, desc: cxStr(b.desc, 600).trim(), category: cxStr(b.category, 24).trim() });
   });
   return out;
 }
@@ -63,6 +63,11 @@ async function loadHomeContent(force){
 
 /* ---------- Tampilan Beranda ---------- */
 const CX_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CX_SEARCH = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const CX_BM = (on) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}"><path d="M6.5 4.5h11a1 1 0 011 1V20l-6.5-4-6.5 4V5.5a1 1 0 011-1z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
+const CX_PLAY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>';
+const CX_TABS = [['all','Semua'],['fav','Favorit'],['unread','Belum dibaca']];
+const CX_LIB_TABS = [['all','Semua'],['fav','Favorit'],['reading','Sedang dibaca'],['unread','Belum dibaca'],['done','Selesai']];
 
 function cxReadInfo(id){
   try{
@@ -71,24 +76,83 @@ function cxReadInfo(id){
   }catch(_){}
   return null;
 }
+const cxDone = (info) => !!info && info.p >= info.n;
+const cxPct = (info) => info ? Math.min(100, Math.round(info.p / info.n * 100)) : 0;
 
-function cxBookCard(b, i){
-  const [c1, c2] = CX_COVER_COLORS[i % CX_COVER_COLORS.length];
+/* ----- Favorit (per akun) ----- */
+function cxFavs(){
+  try{ const a = JSON.parse(localStorage.getItem(`cu_fav_${currentUser}`) || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; }
+  catch(_){ return []; }
+}
+function cxIsFav(id){ return cxFavs().includes(id); }
+function cxToggleFav(ev, id){
+  if(ev && ev.stopPropagation) ev.stopPropagation();
+  const f = cxFavs(), k = f.indexOf(id);
+  if(k === -1) f.push(id); else f.splice(k, 1);
+  try{ localStorage.setItem(`cu_fav_${currentUser}`, JSON.stringify(f)); }catch(_){}
+  if(typeof showToast === 'function') showToast(k === -1 ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit');
+  cxRefreshOpen();
+}
+
+function cxMatch(b, tab){
   const info = cxReadInfo(b.id);
-  const pct = info ? Math.min(100, Math.round(info.p / info.n * 100)) : 0;
-  const cover = b.cover
-    ? `<img src="${escapeHtml(cxHref(b.cover))}" alt="" loading="lazy" onerror="this.remove()">`
-    : '';
-  return `<div class="cx-book" style="animation-delay:${i*60}ms" onclick="openBook(${i})">
-    <div class="cx-cover" style="background:linear-gradient(145deg,${c1},${c2})">
-      <span class="cx-cover-t">${escapeHtml(b.title)}</span>${cover}
-      <span class="cx-pdf-tag">PDF</span>
-    </div>
-    <div class="cx-btitle">${escapeHtml(b.title)}</div>
-    <div class="cx-bauthor">${b.author ? escapeHtml(b.author) : '&nbsp;'}</div>
-    ${info ? `<div class="cx-prog"><i style="width:${pct}%"></i></div><div class="cx-prog-t">Hal. ${info.p} dari ${info.n}</div>` : ''}
+  if(tab === 'fav') return cxIsFav(b.id);
+  if(tab === 'unread') return !info;
+  if(tab === 'reading') return !!info && !cxDone(info);
+  if(tab === 'done') return cxDone(info);
+  return true;
+}
+function cxFiltered(tab, q){
+  q = (q || '').trim().toLowerCase();
+  const out = [];
+  (cx.books || []).forEach((b, i) => {
+    if(!cxMatch(b, tab)) return;
+    if(q && !(`${b.title} ${b.author} ${b.category}`.toLowerCase().includes(q))) return;
+    out.push({ b, i });
+  });
+  return out;
+}
+
+/* ----- Potongan tampilan ----- */
+function cxCover(b, i, cls){
+  const [c1, c2] = CX_COVER_COLORS[i % CX_COVER_COLORS.length];
+  const img = b.cover ? `<img src="${escapeHtml(cxHref(b.cover))}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  return `<div class="${cls}" style="background:linear-gradient(145deg,${c1},${c2})"><span class="bk-cov-fb">${escapeHtml(b.title)}</span>${img}</div>`;
+}
+function cxRing(pct){
+  const c = 94.25;
+  return `<svg class="bk-ring" width="40" height="40" viewBox="0 0 38 38"><circle cx="19" cy="19" r="15" fill="rgba(5,20,19,.45)" stroke="rgba(255,255,255,.28)" stroke-width="3.5"/><circle cx="19" cy="19" r="15" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${(c * (1 - pct / 100)).toFixed(2)}" transform="rotate(-90 19 19)"/><text x="19" y="22.6" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="800" font-family="inherit">${pct}</text></svg>`;
+}
+function cxStatus(info){
+  if(!info) return 'Belum dibaca';
+  return cxDone(info) ? 'Selesai dibaca' : `Hal. ${info.p} dari ${info.n}`;
+}
+
+function cxContinueCard(b, i, k){
+  const info = cxReadInfo(b.id);
+  return `<div class="bk-cc" style="animation-delay:${k*60}ms" onclick="showBook(${i})">
+    ${cxCover(b, i, 'bk-cc-cov')}
+    <div class="bk-shade"></div>
+    ${cxRing(cxPct(info))}
+    <div class="bk-cc-t"><b>${escapeHtml(b.title)}</b><small>${b.author ? escapeHtml(b.author) : 'PDF'}</small></div>
   </div>`;
 }
+
+function cxListRow(b, i, k){
+  const info = cxReadInfo(b.id), fav = cxIsFav(b.id);
+  return `<div class="bk-item" style="animation-delay:${k*45}ms" onclick="showBook(${i})">
+    ${cxCover(b, i, 'bk-thumb')}
+    <div class="bk-info">
+      <div class="bk-t">${escapeHtml(b.title)}</div>
+      <div class="bk-a">${b.author ? escapeHtml(b.author) : '&nbsp;'}</div>
+      <div class="bk-meta"><span>${cxStatus(info)}</span>${b.category ? `<span class="bk-chip">${escapeHtml(b.category)}</span>` : ''}</div>
+      ${info && !cxDone(info) ? `<div class="bk-mini"><i style="width:${cxPct(info)}%"></i></div>` : ''}
+    </div>
+    <button class="bk-bm${fav ? ' on' : ''}" onclick="cxToggleFav(event,'${b.id}')" aria-label="Favorit">${CX_BM(fav)}</button>
+  </div>`;
+}
+
+function cxSetTab(t){ cx.tab = t; renderHomeContent(false); }
 
 function renderHomeContent(loadingOnly){
   const booksEl = document.getElementById('cx-books');
@@ -102,7 +166,7 @@ function renderHomeContent(loadingOnly){
 
   if(loadingOnly){
     const sk = '<div class="cx-skel"></div>';
-    booksEl.innerHTML = `<div class="cx-head"><small>&nbsp;</small><h2>Buku PDF</h2></div><div class="cx-row">${sk}${sk}</div>`;
+    booksEl.innerHTML = `<div class="bk-top"><div><small>&nbsp;</small><h2>Buku PDF</h2></div></div>${sk}${sk}${sk}`;
     return;
   }
 
@@ -112,14 +176,129 @@ function renderHomeContent(loadingOnly){
     return;
   }
 
-  if(cx.books && cx.books.length){
-    booksEl.innerHTML = `<div class="cx-head row"><div><small>${cx.books.length} buku · baca langsung</small><h2>Buku PDF</h2></div><span class="cx-swipe">Geser ${CX_CHEV}</span></div>
-      <div class="cx-row books">${cx.books.map((b, i) => cxBookCard(b, i)).join('')}</div>`;
-  } else {
-    booksEl.innerHTML = '';
+  if(!(cx.books && cx.books.length)){ booksEl.innerHTML = ''; cx.drawn = true; return; }
+
+  const reading = cxFiltered('reading');
+  const all = cxFiltered(cx.tab);
+  const shown = all.slice(0, 5);
+
+  let html = `<div class="bk-top"><div><small>${cx.books.length} buku · baca langsung</small><h2>Buku PDF</h2></div>
+    <button class="bk-iconbtn" onclick="openLibrary()" aria-label="Cari buku">${CX_SEARCH}</button></div>`;
+
+  if(reading.length){
+    html += `<div class="bk-sec">Lanjut Membaca</div>
+      <div class="cx-row">${reading.map(({ b, i }, k) => cxContinueCard(b, i, k)).join('')}</div>`;
   }
+
+  html += `<div class="bk-sec-row"><div class="bk-sec">Untuk Kamu</div><button class="bk-more" onclick="openLibrary()">Lihat semua ${CX_CHEV}</button></div>
+    <div class="bk-tabs">${CX_TABS.map(([k, l]) => `<button class="bk-tab${cx.tab === k ? ' on' : ''}" onclick="cxSetTab('${k}')">${l}</button>`).join('')}</div>`;
+
+  if(shown.length){
+    html += `<div class="bk-list">${shown.map(({ b, i }, k) => cxListRow(b, i, k)).join('')}</div>`;
+    if(all.length > shown.length) html += `<button class="bk-all" onclick="openLibrary()">Lihat semua ${all.length} buku</button>`;
+  } else {
+    html += `<div class="cx-note">${cx.tab === 'fav' ? 'Belum ada favorit. Ketuk ikon penanda di salah satu buku.' : 'Tidak ada buku di kategori ini.'}</div>`;
+  }
+
+  booksEl.innerHTML = html;
   cx.drawn = true;
   restore();
+}
+
+/* ---------- Perpustakaan (cari + grid) ---------- */
+function openLibrary(){
+  if(cx.libOpen) return;
+  cx.libOpen = true;
+  document.getElementById('lib-q').value = '';
+  cx.libTab = 'all';
+  cxLibRender();
+  ovOpen('lib-view');
+}
+function cxLibSetTab(t){ cx.libTab = t; cxLibRender(); }
+function cxLibRender(){
+  const chips = document.getElementById('lib-chips');
+  const grid = document.getElementById('lib-grid');
+  if(!chips || !grid) return;
+  chips.innerHTML = CX_LIB_TABS.map(([k, l]) => `<button class="bk-chipbtn${cx.libTab === k ? ' on' : ''}" onclick="cxLibSetTab('${k}')">${l}</button>`).join('');
+  const list = cxFiltered(cx.libTab, document.getElementById('lib-q').value);
+  if(!list.length){ grid.innerHTML = '<div class="bk-empty">Tidak ada buku yang cocok.</div>'; return; }
+  grid.innerHTML = list.map(({ b, i }, k) => {
+    const info = cxReadInfo(b.id), fav = cxIsFav(b.id);
+    return `<div class="bk-g" style="animation-delay:${Math.min(k, 10) * 40}ms" onclick="showBook(${i})">
+      ${cxCover(b, i, 'bk-gcov')}
+      <div class="bk-shade"></div>
+      ${info && !cxDone(info) ? cxRing(cxPct(info)) : ''}
+      ${fav ? `<span class="bk-gfav">${CX_BM(true)}</span>` : ''}
+      <div class="bk-gt">${escapeHtml(b.title)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- Detail buku ---------- */
+function showBook(i){
+  const b = cx.books && cx.books[i];
+  if(!b) return;
+  cx.detail = i;
+  renderBookDetail(i);
+  document.getElementById('bk-scroll').scrollTop = 0;
+  if(!document.getElementById('book-view').classList.contains('active')) ovOpen('book-view');
+}
+
+function renderBookDetail(i){
+  const b = cx.books[i];
+  const info = cxReadInfo(b.id), done = cxDone(info), pct = cxPct(info), fav = cxIsFav(b.id);
+  const bg = b.cover ? `<div class="bk-hero-bg" style="background-image:url('${escapeHtml(cxHref(b.cover))}')"></div>` : '';
+  const cta = !info ? 'Mulai Membaca' : (done ? 'Baca Lagi' : 'Lanjut Membaca');
+  const share = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="6.5" cy="12" r="2.4" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6" r="2.4" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="18" r="2.4" stroke="currentColor" stroke-width="2"/><path d="M8.6 10.8l6.8-3.6M8.6 13.2l6.8 3.6" stroke="currentColor" stroke-width="2"/></svg>`;
+  const redo = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.5 12a8.5 8.5 0 102.6-6.1M3.5 4.5v4.2h4.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const others = cxFiltered('all').filter(x => x.i !== i).slice(0, 4);
+
+  document.getElementById('bk-scroll').innerHTML = `
+    <div class="bk-hero">${bg}
+      <div class="bk-hero-in">
+        ${cxCover(b, i, 'bk-hcov')}
+        <div class="bk-hinfo">
+          <h1>${escapeHtml(b.title)}</h1>
+          <p>${b.author ? escapeHtml(b.author) : 'Buku PDF'}</p>
+          <div class="bk-hchips"><span>PDF</span>${b.category ? `<span>${escapeHtml(b.category)}</span>` : ''}${done ? '<span>Selesai</span>' : ''}</div>
+        </div>
+      </div>
+      <button class="bk-cta" onclick="openBook(${i})">${CX_PLAY}<span>${cta}</span></button>
+      ${info ? `<div class="bk-hprog"><i style="width:${pct}%"></i></div><div class="bk-hprog-t">${cxStatus(info)} · ${pct}%</div>` : ''}
+    </div>
+    <div class="bk-bodywrap">
+      <p class="bk-desc">${escapeHtml(b.desc || 'Buku PDF yang bisa dibaca langsung di aplikasi, termasuk saat offline setelah dibuka sekali.')}</p>
+      <div class="bk-acts">
+        <button class="bk-act${fav ? ' on' : ''}" onclick="cxToggleFav(event,'${b.id}')">${CX_BM(fav)}<span>${fav ? 'Favorit' : 'Tambah favorit'}</span></button>
+        <button class="bk-act" onclick="cxRestart(${i})"${info ? '' : ' disabled'}>${redo}<span>Mulai ulang</span></button>
+        <button class="bk-act" onclick="cxShare(${i})">${share}<span>Bagikan</span></button>
+      </div>
+      ${others.length ? `<div class="bk-sec" style="margin-top:18px">Buku Lainnya</div><div class="bk-list">${others.map(({ b: ob, i: oi }, k) => cxListRow(ob, oi, k)).join('')}</div>` : ''}
+    </div>`;
+}
+
+function cxRestart(i){
+  const b = cx.books && cx.books[i];
+  if(!b || !cxReadInfo(b.id)) return;
+  try{ localStorage.removeItem(`cu_read_${currentUser}_${b.id}`); }catch(_){}
+  if(typeof showToast === 'function') showToast('Progres baca direset');
+  cxRefreshOpen();
+}
+async function cxShare(i){
+  const b = cx.books && cx.books[i];
+  if(!b) return;
+  const url = new URL(cxHref(b.file), document.baseURI).href;
+  try{
+    if(navigator.share) await navigator.share({ title: b.title, text: `Baca "${b.title}"`, url });
+    else { await navigator.clipboard.writeText(url); showToast('Tautan buku disalin'); }
+  }catch(_){}
+}
+
+/* segarkan semua tampilan buku yang sedang terbuka */
+function cxRefreshOpen(){
+  if(typeof currentData !== 'undefined' && currentData) renderHomeContent(false);
+  if(cx.detail != null && cx.books && cx.books[cx.detail] && document.getElementById('book-view').classList.contains('show')) renderBookDetail(cx.detail);
+  if(cx.libOpen) cxLibRender();
 }
 
 /* ---------- Overlay (pembaca) + tombol Kembali Android ---------- */
@@ -139,6 +318,8 @@ function ovHide(id){
   el.classList.remove('active');
   setTimeout(() => { if(!el.classList.contains('active')) el.classList.remove('show'); }, 380);
   if(id === 'reader-view') readerCleanup();
+  if(id === 'book-view') cx.detail = null;
+  if(id === 'lib-view') cx.libOpen = false;
 }
 function ovClose(id){
   const i = ovStack.lastIndexOf(id);
@@ -417,7 +598,7 @@ function readerCleanup(){
   try{ if(r.doc) r.doc.destroy(); }catch(_){}
   rd = null;
   setTimeout(() => { if(!rd){ document.getElementById('rd-pages').innerHTML = ''; } }, 420);
-  if(typeof currentData !== 'undefined' && currentData) renderHomeContent(false); // perbarui bar progres di kartu buku
+  cxRefreshOpen(); // perbarui progres di Beranda, detail, dan perpustakaan
 }
 
 (function(){
