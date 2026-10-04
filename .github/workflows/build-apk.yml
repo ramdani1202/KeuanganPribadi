@@ -1,1 +1,236 @@
+name: Build APK Android
 
+# Cara pakai: tab Actions -> "Build APK Android" -> Run workflow.
+# Hasilnya: file MoneyPri.apk di halaman Releases repo ini.
+
+on:
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: "Alamat web MoneyPri (kosongkan = otomatis https://NAMA.github.io/REPO/)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Tentukan alamat web
+        id: url
+        env:
+          INPUT_URL: ${{ github.event.inputs.site_url }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          URL="$INPUT_URL"
+          if [ -z "$URL" ]; then
+            O=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+            R=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+            if [ "$R" = "$O.github.io" ]; then URL="https://$O.github.io/"; else URL="https://$O.github.io/$REPO/"; fi
+          fi
+          case "$URL" in */) ;; *) URL="$URL/" ;; esac
+          echo "Alamat web: $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Pasang Capacitor
+        run: |
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Buat proyek Android
+        env:
+          SITE_URL: ${{ steps.url.outputs.url }}
+        run: |
+          mkdir -p www
+          cat > www/index.html <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MoneyPri</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0D9488;color:#fff">MoneyPri</body></html>
+          HTML
+          node -e '
+            const fs = require("fs");
+            fs.writeFileSync("capacitor.config.json", JSON.stringify({
+              appId: "com.moneypri.app",
+              appName: "MoneyPri",
+              webDir: "www",
+              server: { url: process.env.SITE_URL, androidScheme: "https", cleartext: false }
+            }, null, 2));
+          '
+          npx cap add android
+
+      - name: Plugin pembuka aplikasi bank dan e-wallet
+        run: |
+          D=android/app/src/main/java/com/moneypri/app
+          mkdir -p "$D"
+          cat > "$D/AppOpenerPlugin.java" <<'JAVA'
+          package com.moneypri.app;
+
+          import android.content.ActivityNotFoundException;
+          import android.content.Intent;
+          import android.net.Uri;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "AppOpener")
+          public class AppOpenerPlugin extends Plugin {
+
+              @PluginMethod
+              public void open(PluginCall call) {
+                  String pkg = call.getString("package");
+                  if (pkg == null || pkg.trim().isEmpty()) {
+                      call.reject("package kosong");
+                      return;
+                  }
+                  JSObject ret = new JSObject();
+                  try {
+                      Intent launch = getContext().getPackageManager().getLaunchIntentForPackage(pkg);
+                      if (launch != null) {
+                          launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          getContext().startActivity(launch);
+                          ret.put("opened", true);
+                          call.resolve(ret);
+                          return;
+                      }
+                  } catch (Exception ignored) {
+                  }
+                  // belum terpasang -> halaman Google Play
+                  try {
+                      Intent store = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg));
+                      store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                      getContext().startActivity(store);
+                  } catch (ActivityNotFoundException e) {
+                      Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg));
+                      web.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                      getContext().startActivity(web);
+                  }
+                  ret.put("opened", false);
+                  call.resolve(ret);
+              }
+          }
+          JAVA
+          cat > "$D/MainActivity.java" <<'JAVA'
+          package com.moneypri.app;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(AppOpenerPlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          JAVA
+
+      - name: Manifest, ikon, dan warna
+        run: |
+          python3 -m pip install --quiet --break-system-packages pillow
+          python3 - <<'PY'
+          import re, os, shutil
+          # 1) izinkan aplikasi melihat paket bank/e-wallet (wajib di Android 11+)
+          static = ["id.co.bankbkemobile.digitalbank","com.krom.android","com.bnc.finance","com.gojek.gopay","ovo.id",
+                    "com.bca","src.com.bni","id.co.bri.brimo","id.bmri.livin","com.jago.digitalBanking","id.dana","com.shopee.id"]
+          try:
+              found = re.findall(r"pkg:\s*'([^']+)'", open("app.js", encoding="utf-8").read())
+          except Exception:
+              found = []
+          pk = sorted(set(static + found))
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p, encoding="utf-8").read()
+          q = "<queries>" + "".join('<package android:name="%s"/>' % x for x in pk) + "</queries>\n    "
+          assert "<application" in s
+          s = s.replace("<application", q + "<application", 1)
+          open(p, "w", encoding="utf-8").write(s)
+          print("queries:", len(pk), "paket")
+          # 2) ikon dari icons/icon-512.png
+          from PIL import Image
+          res = "android/app/src/main/res"
+          src = Image.open("icons/icon-512.png").convert("RGBA")
+          for d, sz in {"mdpi":48,"hdpi":72,"xhdpi":96,"xxhdpi":144,"xxxhdpi":192}.items():
+              folder = "%s/mipmap-%s" % (res, d)
+              os.makedirs(folder, exist_ok=True)
+              im = src.resize((sz, sz), Image.LANCZOS)
+              im.save(folder + "/ic_launcher.png")
+              im.save(folder + "/ic_launcher_round.png")
+          shutil.rmtree(res + "/mipmap-anydpi-v26", ignore_errors=True)
+          PY
+          # 3) warna status bar sama dengan tema aplikasi, dan hindari tampilan menembus status bar
+          C=android/app/src/main/res/values/colors.xml
+          [ -f "$C" ] && sed -i 's/#3F51B5/#0D9488/g; s/#303F9F/#0D9488/g' "$C" || true
+          sed -i 's/targetSdkVersion = 35/targetSdkVersion = 34/' android/variables.gradle || true
+
+      - name: Tanda tangan tetap (supaya update APK menimpa versi lama)
+        run: |
+          mkdir -p ~/.android
+          base64 -d > ~/.android/debug.keystore <<'KEY'
+          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
+          KEY
+
+      - name: Bangun APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Siapkan file
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk MoneyPri.apk
+
+      - name: Terbitkan di Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: MoneyPri APK #${{ github.run_number }}
+          body: "Unduh MoneyPri.apk di bawah ini, lalu pasang di HP Android."
+          files: MoneyPri.apk
