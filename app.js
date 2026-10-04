@@ -46,9 +46,28 @@ const APP_PACKAGES = {
   dana:      { pkg:'id.dana' },
   shopeepay: { pkg:'com.shopee.id' }
 };
+/* Di APK Android (Capacitor) ada plugin native "AppOpener" -> aplikasi langsung terbuka */
+function nativeAppOpener(){
+  const c = window.Capacitor;
+  if(!c || (typeof c.isNativePlatform === 'function' && !c.isNativePlatform())) return null;
+  if(c.Plugins && c.Plugins.AppOpener) return c.Plugins.AppOpener;
+  if(typeof c.registerPlugin === 'function'){ try{ return c.registerPlugin('AppOpener'); }catch(_){} }
+  return null;
+}
+
 function openExternalApp(key, name){
   const app = APP_PACKAGES[key];
   if(!app) return;
+  const opener = nativeAppOpener();
+  if(opener){
+    showToast('Membuka ' + (name || 'aplikasi') + '…');
+    opener.open({ package: app.pkg }).catch(() => openExternalAppWeb(app, key, name));
+    return;
+  }
+  openExternalAppWeb(app, key, name);
+}
+
+function openExternalAppWeb(app, key, name){
   if(!/Android/i.test(navigator.userAgent)){
     showToast('Buka aplikasi hanya bisa di HP Android');
     return;
