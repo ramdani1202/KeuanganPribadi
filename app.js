@@ -28,6 +28,40 @@ const EWALLET_CATALOG = [
   { key:'ovo',        name:'OVO',        logo:'icons/ewallets/ovo.png' },
   { key:'shopeepay',  name:'ShopeePay',  logo:'icons/ewallets/shopeepay.png' }
 ];
+/* ---------- Buka aplikasi bank / e-wallet dari ikon (Android) ----------
+   ok:1 = nama paket sudah dicocokkan dengan halaman Google Play-nya.
+   Tanpa ok = nama paket dari pengetahuan umum (belum dicek), jadi kalau aplikasinya
+   tidak terbuka, yang muncul pencarian Google Play. Betulkan 'pkg' di sini bila perlu. */
+const APP_PACKAGES = {
+  seabank:   { pkg:'id.co.bankbkemobile.digitalbank', ok:1 },
+  krombank:  { pkg:'com.krom.android', ok:1 },
+  neobank:   { pkg:'com.bnc.finance', ok:1 },
+  gopay:     { pkg:'com.gojek.gopay', ok:1 },
+  ovo:       { pkg:'ovo.id', ok:1 },
+  bca:       { pkg:'com.bca' },
+  bni:       { pkg:'src.com.bni' },
+  bri:       { pkg:'id.co.bri.brimo' },
+  mandiri:   { pkg:'id.bmri.livin' },
+  jago:      { pkg:'com.jago.digitalBanking' },
+  dana:      { pkg:'id.dana' },
+  shopeepay: { pkg:'com.shopee.id' }
+};
+function openExternalApp(key, name){
+  const app = APP_PACKAGES[key];
+  if(!app) return;
+  if(!/Android/i.test(navigator.userAgent)){
+    showToast('Buka aplikasi hanya bisa di HP Android');
+    return;
+  }
+  // Jika aplikasi tidak bisa dibuka/belum terpasang -> halaman Google Play (atau pencarian)
+  const fallback = app.ok
+    ? `https://play.google.com/store/apps/details?id=${app.pkg}`
+    : `https://play.google.com/store/search?q=${encodeURIComponent(name || key)}&c=apps`;
+  showToast('Membuka ' + (name || 'aplikasi') + '…');
+  window.location.href =
+    `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${app.pkg};S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
+}
+
 function catalogFor(kind){ return kind === 'bank' ? BANK_CATALOG : EWALLET_CATALOG; }
 function catalogItem(kind, key){ return catalogFor(kind).find(c => c.key === key); }
 
@@ -990,9 +1024,11 @@ const MORE_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentC
 
 function walletListRow(kind, b, i){
   const bal = (kind === 'bank' ? currentData.balances.bank : currentData.balances.ewallet)[b.id] || 0;
-  const logoHTML = b.logo
+  const canOpen = !!(b.key && APP_PACKAGES[b.key]);
+  let logoHTML = b.logo
     ? `<img src="${escapeHtml(b.logo)}" class="wlogo" alt="">`
     : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
+  if(canOpen) logoHTML = `<button class="wopen" aria-label="Buka aplikasi ${escapeHtml(b.name)}" title="Buka aplikasi ${escapeHtml(b.name)}">${logoHTML}<span class="wopen-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M8 16L16 8M9 8h7v7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`;
   const row = document.createElement('div');
   row.className = 'row-item';
   row.style.animationDelay = (i*40) + 'ms';
@@ -1000,6 +1036,8 @@ function walletListRow(kind, b, i){
     <span class="rbal">${fmtRupiah(bal)}</span>
     <button class="rmore" aria-label="Menu ${escapeHtml(b.name)}" title="Ubah saldo / hapus">${MORE_SVG}</button>`;
   row.querySelector('.rmore').onclick = () => openWalletMenu(kind, b.id);
+  const openBtn = row.querySelector('.wopen');
+  if(openBtn) openBtn.onclick = (e) => { e.stopPropagation(); openExternalApp(b.key, b.name); };
   return row;
 }
 

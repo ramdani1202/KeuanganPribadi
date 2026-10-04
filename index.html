@@ -204,6 +204,10 @@
   @media (prefers-reduced-motion: reduce){ .row-item, .menu-item, .row-item .rmore{ animation:none !important; transition:none !important; } .row-item:active, .row-item .rmore:active, .menu-item:active{ transform:none !important; } }
 
   .wlogo{ width:32px; height:32px; border-radius:9px; object-fit:cover; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.12); }
+  .wopen{ position:relative; flex-shrink:0; width:32px; height:32px; padding:0; border:0; background:none; border-radius:9px; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
+  .wopen:active{ transform:scale(.88); }
+  .wopen .wlogo{ display:block; }
+  .wopen-badge{ position:absolute; right:-5px; bottom:-5px; width:15px; height:15px; border-radius:50%; background:var(--in); color:#fff; border:2px solid var(--white,#fff); box-sizing:content-box; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
   .wlogo-fallback{
     width:32px; height:32px; border-radius:9px; flex-shrink:0; background:var(--in-soft); color:var(--in-deep);
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;
