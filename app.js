@@ -1047,7 +1047,7 @@ function walletListRow(kind, b, i){
   let logoHTML = b.logo
     ? `<img src="${escapeHtml(b.logo)}" class="wlogo" alt="">`
     : `<span class="wlogo wlogo-fallback">${escapeHtml((b.name||'?').charAt(0).toUpperCase())}</span>`;
-  if(canOpen) logoHTML = `<button class="wopen" aria-label="Buka aplikasi ${escapeHtml(b.name)}" title="Buka aplikasi ${escapeHtml(b.name)}">${logoHTML}<span class="wopen-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M8 16L16 8M9 8h7v7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`;
+  if(canOpen) logoHTML = `<button class="wopen" aria-label="Buka aplikasi ${escapeHtml(b.name)}" title="Buka aplikasi ${escapeHtml(b.name)}">${logoHTML}</button>`;
   const row = document.createElement('div');
   row.className = 'row-item';
   row.style.animationDelay = (i*40) + 'ms';
