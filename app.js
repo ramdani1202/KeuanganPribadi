@@ -1534,21 +1534,39 @@ function handleImportFile(event){
 }
 
 
+function hideSplash(){
+  const s = document.getElementById('splash');
+  if(!s || s.dataset.done) return;
+  s.dataset.done = '1';
+  s.classList.add('hide');
+  setTimeout(() => { if(s.parentNode) s.parentNode.removeChild(s); }, 500);
+}
+
 (function init(){
-  initServiceWorker();
-  const session = localStorage.getItem(LS_SESSION);
-  if(session){
-    const data = getUserData(session);
-    if(data){
+  // Tidak ada layar yang tampil sampai kita tahu tujuannya (login atau beranda),
+  // jadi layar login tidak sempat berkedip sebelum pindah ke menu.
+  try{
+    initServiceWorker();
+    const session = localStorage.getItem(LS_SESSION);
+    const data = session ? getUserData(session) : null;
+    if(session && data){
       currentUser = session;
       currentData = data;
-      if(!currentData.incomeType){
-        goTo('screen-ob-income');
-      } else {
-        enterApp();
-      }
-      return;
+      if(!currentData.incomeType) goTo('screen-ob-income');
+      else enterApp();
+    } else {
+      goTo('screen-login');
     }
+  }catch(e){
+    goTo('screen-login');
   }
-  goTo('screen-login');
+  // buka splash setelah layar tujuan tergambar (minimal tampil sebentar supaya terasa mulus)
+  const wait = Math.max(0, 600 - (window.performance && performance.now ? performance.now() : 0));
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(hideSplash, wait)));
 })();
+
+// pengaman: kalau karena apa pun belum ada layar yang aktif, tampilkan login
+setTimeout(() => {
+  if(!document.querySelector('.screen.active')) goTo('screen-login');
+  hideSplash();
+}, 5000);
