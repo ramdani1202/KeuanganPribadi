@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0D9488">
-<meta name="app-build" content="20261006a">
+<meta name="app-build" content="20261006b">
 <meta name="description" content="MoneyPri — pembukuan pribadi sederhana">
 <title>MoneyPri</title>
 <link rel="manifest" href="manifest.json">
@@ -777,6 +777,75 @@
   .s-row.danger, .s-row.danger .s-ico{ color:#D1453B; }
   .s-note{ margin:18px 8px 0; text-align:center; font-size:12.5px; line-height:1.55; color:#7A7A7A; }
 
+
+  /* ---- Dompet: tumpukan kartu yang digeser (gaya referensi kartu bank) ---- */
+  #screen-wallets{ background:#EDEDED; }
+  #wallet-picker-modal{ z-index:70; }
+  .w-head{ display:flex; align-items:center; gap:12px; padding:14px 16px 12px; background:#FFFFFF; border-radius:0 0 24px 24px; flex-shrink:0; }
+  .w-ava.avatar{ width:42px; height:42px; font-size:17px; flex-shrink:0; box-shadow:none; }
+  .w-hello{ flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.2; }
+  .w-hello small{ font-size:12px; font-weight:500; color:#8A8A8A; }
+  .w-hello b{ font-size:18px; font-weight:800; color:#111; letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .w-add{ width:42px; height:42px; border:0; border-radius:50%; background:#F3F3F3; color:#111; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
+  .w-add:active{ transform:scale(.9); }
+  .w-scroll{ flex:1; display:flex; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:0; }
+  .w-panel{ position:relative; flex-shrink:0; display:flex; margin:12px 14px 0; padding:16px 0 14px 12px; background:#F6F6F6; border-radius:26px; overflow:hidden; }
+  .w-actions{ display:flex; flex-direction:column; gap:16px; width:68px; flex-shrink:0; align-items:center; padding-top:6px; z-index:5; }
+  .w-act{ border:0; background:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .w-act-ico{ width:46px; height:46px; border-radius:50%; background:#FFFFFF; color:#161616; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px -6px rgba(0,0,0,.25); transition:transform .18s cubic-bezier(.34,1.56,.64,1); }
+  .w-act:active .w-act-ico{ transform:scale(.9); }
+  .w-act em{ font-style:normal; font-size:11.5px; font-weight:600; color:#222; white-space:nowrap; }
+  .w-act:disabled{ opacity:.35; cursor:default; }
+  .w-stack{ position:relative; z-index:0; isolation:isolate; flex:1; min-width:0; margin-left:8px; touch-action:pan-y; user-select:none; -webkit-user-select:none; }
+  .wc{ position:absolute; left:0; top:0; border-radius:20px; will-change:transform, opacity; cursor:pointer;
+    background:linear-gradient(155deg,#323232 0%,#171717 55%,#080808 100%); box-shadow:0 20px 30px -18px rgba(0,0,0,.65); color:#fff; overflow:hidden; }
+  .wc-in{ position:absolute; inset:0; padding:18px 20px 16px; display:flex; flex-direction:column; justify-content:space-between; }
+  .wc-bal{ font-size:25px; font-weight:800; letter-spacing:.2px; line-height:1.15; white-space:nowrap; }
+  .wc-bal.sm{ font-size:20px; }
+  .wc-foot{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; padding-right:30px; }
+  .wc-txt{ min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .wc-txt b{ font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wc-txt small{ font-size:12px; font-weight:500; color:rgba(255,255,255,.55); white-space:nowrap; }
+  .wc-logo{ width:42px; height:42px; border-radius:13px; background:#FFFFFF; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; color:#111; font-weight:800; font-size:17px; }
+  .wc-logo img{ width:78%; height:78%; object-fit:contain; display:block; pointer-events:none; }
+  .wc-logo.cash{ background:#E9F7EE; color:#14804A; }
+  .wc-cover{ position:absolute; inset:0; background:#E8E8E8; opacity:0; pointer-events:none; }
+  .wc-tint{ position:absolute; inset:0; background:linear-gradient(150deg,#8B8B8B 0%,#4D4D4D 100%); opacity:0; pointer-events:none; }
+  .w-sheet{ flex:1 0 auto; margin-top:12px; background:#FFFFFF; border-radius:26px 26px 0 0; padding:18px 16px calc(120px + env(safe-area-inset-bottom)); min-height:320px; }
+  .w-sheet-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .w-sheet-head h2{ margin:0; font-size:16px; font-weight:800; color:#111; letter-spacing:-.2px; }
+  .w-sheet-head button{ border:0; background:none; font:600 13px var(--sans); color:#F2662B; text-decoration:underline; text-underline-offset:3px; cursor:pointer; padding:4px 0; }
+  .w-tx{ display:flex; align-items:center; gap:12px; padding:11px 0; animation:riseIn .35s cubic-bezier(.2,.8,.2,1) backwards; }
+  .w-tx-ico{ width:44px; height:44px; border-radius:14px; background:#F3F3F3; color:#222; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .w-tx-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .w-tx-info b{ font-size:14.5px; font-weight:700; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .w-tx-info small, .w-tx-amt small{ font-size:12px; color:#8A8A8A; font-weight:500; }
+  .w-tx-amt{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0; }
+  .w-tx-amt b{ font-size:14.5px; font-weight:800; color:#111; }
+  .w-empty{ padding:26px 6px; text-align:center; font-size:13.5px; font-weight:600; color:#8A8A8A; }
+
+  /* Detail kartu: gelap, kartu mengipas */
+  #wallet-detail{ background:linear-gradient(165deg,#2E2E2E 0%,#171717 42%,#060606 100%); color:#fff; overflow:hidden; }
+  .wd-bar{ padding:calc(14px + env(safe-area-inset-top)) 16px 4px; flex-shrink:0; z-index:5; }
+  .wd-back{ border:0; background:none; color:#fff; display:inline-flex; align-items:center; gap:10px; font:800 16px var(--sans); padding:6px 4px; cursor:pointer; }
+  .wd-stage{ position:relative; flex:1; min-height:0; }
+  .wd-stack{ position:absolute; left:0; right:0; top:0; bottom:0; z-index:1; touch-action:none; user-select:none; -webkit-user-select:none; }
+  .wd-next{ position:absolute; left:-15px; top:50%; width:32px; height:32px; margin-top:-16px; border:0; border-radius:50%; background:#232323; color:#F2662B; z-index:8;
+    display:flex; align-items:center; justify-content:flex-end; padding-right:5px; cursor:pointer; box-shadow:0 6px 14px -6px rgba(0,0,0,.8); }
+  .wd-info{ flex-shrink:0; padding:6px 22px calc(26px + env(safe-area-inset-bottom)); z-index:5; }
+  .wd-f{ margin-bottom:14px; }
+  .wd-f small{ display:block; font-size:12px; font-weight:500; color:rgba(255,255,255,.5); margin-bottom:3px; }
+  .wd-f b{ font-size:16px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
+  .wd-btns{ display:flex; gap:10px; margin-top:6px; }
+  .wd-btns button{ flex:1; border:0; border-radius:14px; height:46px; background:rgba(255,255,255,.12); color:#fff; font:700 13.5px var(--sans); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .wd-btns button:active{ background:rgba(255,255,255,.2); }
+  .wd-btns button.danger{ color:#FF8A80; }
+  .wd-btns button:disabled{ opacity:.35; cursor:default; }
+  #wallet-detail .wc{ box-shadow:0 24px 40px -18px rgba(0,0,0,.9); cursor:default; }
+  #wallet-detail .wc-in{ padding:20px 22px 18px; }
+  #wallet-detail .wc-bal{ font-size:28px; }
+  #wallet-detail .wc-bal.sm{ font-size:23px; }
+
   .update-btn{
     width:36px; height:36px; border-radius:50%; border:none; background:var(--white);
     display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
@@ -1092,26 +1161,25 @@
 
   <!-- ===================== WALLETS ===================== -->
   <section class="screen" id="screen-wallets">
-    <div class="top">
-      <div></div>
-      <h1>Dompet & saldo</h1>
-      <div></div>
+    <div class="w-head">
+      <div class="avatar w-ava" id="w-avatar" onclick="switchTab('settings')" aria-label="Profil"></div>
+      <div class="w-hello"><small>Total saldo</small><b id="w-total">Rp0</b></div>
+      <button class="w-add" onclick="openAddWalletModal()" aria-label="Tambah dompet" title="Tambah bank / e-wallet"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
-    <div class="content" style="flex:1; overflow-y:auto; padding-bottom:110px;">
-      <p class="sub" style="margin-bottom:10px;">Bank</p>
-      <div class="stack" id="wallet-bank-list" style="margin-bottom:22px;"></div>
-      <p class="sub" style="margin-bottom:10px;">E-wallet</p>
-      <div class="stack" id="wallet-ewallet-list" style="margin-bottom:22px;"></div>
-      <p class="sub" style="margin-bottom:10px;">Uang tunai</p>
-      <div class="row-item">
-        <span class="rname">Cash di tangan</span>
-        <span class="rbal" id="wallet-cash-display">Rp0</span>
-        <button class="rmore" onclick="openBalanceModal('cash')" aria-label="Ubah saldo cash" title="Ubah saldo">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+    <div class="w-scroll">
+      <div class="w-panel">
+        <div class="w-actions">
+          <button class="w-act" id="wa-edit" onclick="wAction('edit')"><span class="w-act-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg></span><em>Ubah saldo</em></button>
+          <button class="w-act" id="wa-open" onclick="wAction('open')"><span class="w-act-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span><em>Buka app</em></button>
+          <button class="w-act" id="wa-del" onclick="wAction('del')"><span class="w-act-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V5h4v2M6.5 7l1 12h9l1-12M10 11v5M14 11v5"/></svg></span><em>Hapus</em></button>
+        </div>
+        <div class="w-stack" id="w-stack"></div>
+      </div>
+      <div class="w-sheet">
+        <div class="w-sheet-head"><h2>Transaksi Terbaru</h2><button onclick="switchTab('history')">Lihat semua</button></div>
+        <div id="w-tx"></div>
       </div>
     </div>
-    <button class="fab" id="wallet-fab" onclick="openAddWalletModal()" title="Tambah bank / e-wallet">+</button>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')" aria-label="Beranda">
         <svg class="ico-off" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V20a1 1 0 001 1h4v-6a1 1 0 011-1h2a1 1 0 011 1v6h4a1 1 0 001-1V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1230,6 +1298,24 @@
 <div class="toast" id="toast"></div>
 
 <!-- jsPDF for receipt printing -->
+<!-- Halaman penuh: detail kartu dompet (gelap, kartu mengipas) -->
+<div class="ov" id="wallet-detail">
+  <div class="wd-bar"><button class="wd-back" onclick="ovClose('wallet-detail')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg><span>Kembali</span></button></div>
+  <div class="wd-stage">
+    <div class="wd-stack" id="wd-stack"></div>
+    <button class="wd-next" id="wd-next" onclick="wdNext()" aria-label="Kartu berikutnya"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+  <div class="wd-info">
+    <div class="wd-f"><small>Jenis</small><b id="wd-type">-</b></div>
+    <div class="wd-f"><small>Pemilik akun</small><b id="wd-owner">-</b></div>
+    <div class="wd-btns">
+      <button onclick="wAction('edit')">Ubah saldo</button>
+      <button id="wd-open" onclick="wAction('open')">Buka app</button>
+      <button id="wd-del" class="danger" onclick="wAction('del')">Hapus</button>
+    </div>
+  </div>
+</div>
+
 <!-- Halaman penuh: perpustakaan (cari + grid) -->
 <div class="ov" id="lib-view">
   <div class="bk-lbar">
@@ -1260,7 +1346,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="app.js?b=20261006a"></script>
-<script src="content.js?b=20261006a"></script>
+<script src="app.js?b=20261006b"></script>
+<script src="content.js?b=20261006b"></script>
 </body>
 </html>

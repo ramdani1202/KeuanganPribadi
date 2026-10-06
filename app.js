@@ -666,6 +666,7 @@ function applyAvatar(el){
 function refreshAvatars(){
   applyAvatar(document.getElementById('home-avatar'));
   applyAvatar(document.getElementById('set-avatar'));
+  applyAvatar(document.getElementById('w-avatar'));
   const del = document.getElementById('btn-del-photo');
   if(del) del.style.display = (currentData && currentData.profilePhoto) ? '' : 'none';
 }
@@ -1060,23 +1061,244 @@ function walletListRow(kind, b, i){
   return row;
 }
 
-function refreshWallets(){
-  const bankWrap = document.getElementById('wallet-bank-list');
-  bankWrap.innerHTML = '';
-  if(currentData.banks.length === 0){
-    bankWrap.innerHTML = '<p class="sub">Belum ada rekening bank.</p>';
-  }
-  currentData.banks.forEach((b, i) => bankWrap.appendChild(walletListRow('bank', b, i)));
+/* ---------- Tumpukan kartu dompet: pilih dengan menggeser ---------- */
+const W_CASH_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 10v4M17.5 10v4"/></svg>';
+let wSel = 0, wMain = null, wDet = null, wSyncing = false;
 
-  const ewWrap = document.getElementById('wallet-ewallet-list');
-  ewWrap.innerHTML = '';
-  if(currentData.ewallets.length === 0){
-    ewWrap.innerHTML = '<p class="sub">Belum ada e-wallet.</p>';
-  }
-  currentData.ewallets.forEach((b, i) => ewWrap.appendChild(walletListRow('ewallet', b, i)));
-
-  document.getElementById('wallet-cash-display').textContent = fmtRupiah(currentData.balances.cash||0);
+function walletItems(){
+  const out = [];
+  currentData.banks.forEach(b => out.push({ kind:'bank', id:b.id, key:b.key, name:b.name, logo:b.logo, bal:Number(currentData.balances.bank[b.id])||0, label:'Rekening bank' }));
+  currentData.ewallets.forEach(b => out.push({ kind:'ewallet', id:b.id, key:b.key, name:b.name, logo:b.logo, bal:Number(currentData.balances.ewallet[b.id])||0, label:'E-wallet' }));
+  out.push({ kind:'cash', id:'cash', name:'Cash di tangan', logo:null, bal:Number(currentData.balances.cash)||0, label:'Uang tunai' });
+  return out;
 }
+
+function wcHTML(it){
+  const logo = it.kind === 'cash' ? `<span class="wc-logo cash">${W_CASH_SVG}</span>`
+    : it.logo ? `<span class="wc-logo"><img src="${escapeHtml(it.logo)}" alt="" draggable="false"></span>`
+    : `<span class="wc-logo">${escapeHtml((it.name||'?').charAt(0).toUpperCase())}</span>`;
+  const bal = fmtRupiah(it.bal);
+  return `<div class="wc-tint"></div>
+    <div class="wc-in">
+      <div class="wc-bal${bal.length > 12 ? ' sm' : ''}">${bal}</div>
+      <div class="wc-foot"><div class="wc-txt"><b>${escapeHtml(it.name)}</b><small>${it.label}</small></div>${logo}</div>
+    </div>
+    <div class="wc-cover"></div>`;
+}
+
+/* posisi tiap kartu sebagai fungsi jarak d dari kartu depan (kontinu, jadi gerakannya halus) */
+const wClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function wMainT(d, W){
+  if(d <= -1) return { x:-W*1.15, y:8, r:-12, s:1, o:0, z:0, cover:0, tint:0, org:'0% 100%' };
+  if(d < 0){
+    const t = -d;
+    return { x:-W*1.15*t, y:8*t, r:-12*t, s:1, o:1 - Math.max(0, (t - .55) / .45), z:200, cover:0, tint:0, org:'0% 100%' };
+  }
+  const l = Math.min(d, 3);
+  return { x:11*l, y:-19*l, r:-4.2*l, s:1 - .045*l, o:d <= 2 ? 1 : Math.max(0, 3 - d), z:100 - Math.round(d*10), cover:Math.min(1, d*1.25), tint:0, org:'0% 100%' };
+}
+function wDetT(d){
+  const a = Math.abs(d);
+  const ang = 17*Math.min(a, 1) + 13*wClamp(a - 1, 0, 1);
+  const o = a <= 2 ? 1 : Math.max(0, 3 - a);
+  if(d >= 0) return { x:12*Math.min(a, 2), y:-4*Math.min(a, 2), r:-ang, s:1 - .035*Math.min(a, 3), o, z:100 - Math.round(a*10), cover:0, tint:Math.min(1, a*1.1), org:'0% 100%' };
+  return { x:10*Math.min(a, 2), y:6*Math.min(a, 2), r:ang, s:1 - .035*Math.min(a, 3), o, z:100 - Math.round(a*10), cover:0, tint:Math.min(1, a*1.1), org:'0% 0%' };
+}
+
+function makeStack(el, variant, onChange){
+  const S = { el, variant, items:[], pos:0, W:0, H:0, cards:[], raf:0, drag:null, lastIdx:-1 };
+  const detail = variant === 'detail';
+
+  S.render = (items, idx) => {
+    S.items = items;
+    el.innerHTML = items.map(it => `<div class="wc">${wcHTML(it)}</div>`).join('');
+    S.cards = Array.from(el.children).map(c => ({ el:c, cover:c.querySelector('.wc-cover'), tint:c.querySelector('.wc-tint') }));
+    S.pos = wClamp(idx, 0, Math.max(0, items.length - 1));
+    S.lastIdx = Math.round(S.pos);
+    S.layout();
+  };
+  S.layout = () => {
+    if(!S.cards.length) return;
+    if(detail){
+      const sw = el.clientWidth || 360, sh = el.clientHeight || 420;
+      S.W = Math.min(sw * 0.96, 420); S.H = Math.min(S.W / 1.5, sh * 0.62);
+      S.left = sw - S.W + sw * 0.03; S.top = Math.max(sh * 0.5 - S.H / 2, 0);
+    } else {
+      S.W = (el.clientWidth || 280) + 26; S.H = Math.round(S.W * 0.6);
+      S.left = 0; S.top = 44;
+      el.style.height = (S.H + S.top + 6) + 'px';
+    }
+    S.cards.forEach(c => { c.el.style.width = S.W + 'px'; c.el.style.height = S.H + 'px'; c.el.style.left = S.left + 'px'; c.el.style.top = S.top + 'px'; });
+    S.apply();
+  };
+  S.apply = () => {
+    S.cards.forEach((c, i) => {
+      const d = i - S.pos;
+      const t = detail ? wDetT(d) : wMainT(d, S.W);
+      c.el.style.transformOrigin = t.org;
+      c.el.style.transform = `translate3d(${t.x.toFixed(2)}px,${t.y.toFixed(2)}px,0) rotate(${t.r.toFixed(2)}deg) scale(${t.s.toFixed(3)})`;
+      c.el.style.opacity = t.o.toFixed(3);
+      c.el.style.zIndex = t.z;
+      c.el.style.pointerEvents = t.o < .05 ? 'none' : '';
+      c.cover.style.opacity = t.cover.toFixed(3);
+      c.tint.style.opacity = t.tint.toFixed(3);
+    });
+    const idx = Math.round(S.pos);
+    if(idx !== S.lastIdx){ S.lastIdx = idx; onChange(idx, false, S); }
+  };
+  S.animateTo = (target, dur) => {
+    cancelAnimationFrame(S.raf);
+    target = wClamp(Math.round(target), 0, Math.max(0, S.items.length - 1));
+    const from = S.pos, delta = target - from;
+    if(Math.abs(delta) < 0.001){ S.pos = target; S.apply(); onChange(target, true, S); return; }
+    const total = dur || Math.min(560, 280 + Math.abs(delta) * 130), t0 = performance.now();
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / total);
+      const e = 1 - Math.pow(1 - p, 3);        // easeOutCubic
+      S.pos = from + delta * e;
+      S.apply();
+      if(p < 1) S.raf = requestAnimationFrame(step);
+      else { S.pos = target; S.apply(); onChange(target, true, S); }
+    };
+    S.raf = requestAnimationFrame(step);
+  };
+  S.setIndex = (i, instant) => {
+    i = wClamp(i, 0, Math.max(0, S.items.length - 1));
+    if(instant){ cancelAnimationFrame(S.raf); S.pos = i; S.lastIdx = i; S.apply(); } else S.animateTo(i);
+  };
+
+  /* ---- geser dengan jari (halus, ada momentum) ---- */
+  const unit = () => (detail ? Math.max(120, S.H * 0.7) : S.W * 0.62);
+  el.addEventListener('pointerdown', (e) => {
+    if(S.items.length < 1 || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    cancelAnimationFrame(S.raf);
+    S.drag = { x:e.clientX, y:e.clientY, p0:S.pos, t:performance.now(), lx:e.clientX, ly:e.clientY, lt:performance.now(), v:0, moved:false, locked:false, target:e.target, id:e.pointerId };
+  });
+  el.addEventListener('pointermove', (e) => {
+    const g = S.drag; if(!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if(!g.locked){
+      if(Math.hypot(dx, dy) < 7) return;
+      if(!detail && Math.abs(dy) > Math.abs(dx)){ S.drag = null; return; }      // geser vertikal = gulir halaman
+      g.locked = true; g.moved = true;
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    }
+    const along = detail ? (Math.abs(dx) > Math.abs(dy) ? -dx : -dy) : -dx;
+    const now = performance.now();
+    const raw = g.p0 + along / unit();
+    const n = S.items.length - 1;
+    S.pos = raw < 0 ? raw * 0.3 : (raw > n ? n + (raw - n) * 0.3 : raw);        // tarikan karet di ujung
+    const prevAlong = detail ? (Math.abs(g.lx - g.x) > Math.abs(g.ly - g.y) ? -(g.lx - g.x) : -(g.ly - g.y)) : -(g.lx - g.x);
+    const dt = Math.max(1, now - g.lt);
+    g.v = 0.8 * ((along - prevAlong) / unit() / dt) + 0.2 * g.v;                 // kartu per ms
+    g.lx = e.clientX; g.ly = e.clientY; g.lt = now;
+    S.apply();
+    e.preventDefault();
+  }, { passive:false });
+  const end = (e, cancelled) => {
+    const g = S.drag; if(!g || (e && e.pointerId !== g.id)) return;
+    S.drag = null;
+    if(g.locked){
+      try{ el.releasePointerCapture(g.id); }catch(_){}
+      const fresh = performance.now() - g.lt < 90;
+      const proj = S.pos + (fresh ? g.v * 170 : 0);
+      S.animateTo(cancelled ? S.pos : proj);
+      return;
+    }
+    if(cancelled) return;
+    // ketuk (tanpa geser)
+    const cardEl = g.target && g.target.closest ? g.target.closest('.wc') : null;
+    const i = cardEl ? S.cards.findIndex(c => c.el === cardEl) : -1;
+    if(i < 0) return;
+    if(i === Math.round(S.pos)){ if(!detail) openWalletDetail(); }
+    else S.animateTo(i);
+  };
+  el.addEventListener('pointerup', (e) => end(e, false));
+  el.addEventListener('pointercancel', (e) => end(e, true));
+  return S;
+}
+
+function wOnChange(idx, settled, src){
+  wSel = idx;
+  if(!wSyncing){
+    wSyncing = true;
+    const other = src === wMain ? wDet : wMain;
+    if(other && other.items.length) other.setIndex(idx, true);
+    wSyncing = false;
+  }
+  wRenderTx();
+  wUpdateActions();
+}
+
+function wRenderTx(){
+  const wrap = document.getElementById('w-tx');
+  if(!wrap || !currentData) return;
+  const it = walletItems()[wSel];
+  if(!it){ wrap.innerHTML = ''; return; }
+  const txs = currentData.transactions
+    .filter(t => t.source && t.source.type === it.kind && (it.kind === 'cash' || t.source.id === it.id))
+    .sort((x, y) => new Date(y.date) - new Date(x.date)).slice(0, 4);
+  if(!txs.length){ wrap.innerHTML = '<div class="w-empty">Belum ada transaksi di dompet ini</div>'; return; }
+  wrap.innerHTML = txs.map((t, k) => {
+    const d = new Date(t.date);
+    const ds = d.toLocaleDateString('id-ID', { day:'numeric', month:'short' });
+    const ts = d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    return `<div class="w-tx" style="animation-delay:${k*40}ms">
+      <div class="w-tx-ico">${txIconSVG(t.type)}</div>
+      <div class="w-tx-info"><b>${escapeHtml(t.name)}</b><small>${ts}</small></div>
+      <div class="w-tx-amt"><b>${t.type === 'in' ? '+' : '-'} ${fmtRupiah(t.amount)}</b><small>${ds}</small></div>
+    </div>`;
+  }).join('');
+}
+
+function wUpdateActions(){
+  const it = walletItems()[wSel]; if(!it) return;
+  const canOpen = !!(it.key && APP_PACKAGES[it.key]), canDel = it.kind !== 'cash';
+  const set = (id, on) => { const b = document.getElementById(id); if(b) b.disabled = !on; };
+  set('wa-open', canOpen); set('wa-del', canDel); set('wd-open', canOpen); set('wd-del', canDel);
+  const ty = document.getElementById('wd-type'); if(ty) ty.textContent = it.label;
+  const ow = document.getElementById('wd-owner'); if(ow) ow.textContent = currentUser || '-';
+}
+
+function wAction(kind){
+  const it = walletItems()[wSel]; if(!it) return;
+  if(kind === 'edit') openBalanceModal(it.kind, it.id);
+  else if(kind === 'open'){
+    if(it.key && APP_PACKAGES[it.key]) openExternalApp(it.key, it.name);
+    else showToast('Dompet ini tidak punya aplikasi untuk dibuka');
+  } else if(kind === 'del'){
+    if(it.kind !== 'cash') confirmDeleteWallet(it.kind, it.id);
+  }
+}
+
+function openWalletDetail(){
+  const detailEl = document.getElementById('wallet-detail');
+  if(!wDet) wDet = makeStack(document.getElementById('wd-stack'), 'detail', wOnChange);
+  wDet.render(walletItems(), wSel);
+  wUpdateActions();
+  if(!detailEl.classList.contains('active')) ovOpen('wallet-detail');
+  requestAnimationFrame(() => { wDet.layout(); });
+  setTimeout(() => wDet.layout(), 420);
+}
+function wdNext(){
+  if(!wDet || !wDet.items.length) return;
+  const n = wDet.items.length;
+  wDet.animateTo(Math.round(wDet.pos) + 1 >= n ? 0 : Math.round(wDet.pos) + 1);
+}
+
+function refreshWallets(){
+  const items = walletItems();
+  wSel = wClamp(wSel, 0, items.length - 1);
+  document.getElementById('w-total').textContent = fmtRupiah(totalBalance());
+  applyAvatar(document.getElementById('w-avatar'));
+  if(!wMain) wMain = makeStack(document.getElementById('w-stack'), 'main', wOnChange);
+  wMain.render(items, wSel);
+  if(wDet && document.getElementById('wallet-detail').classList.contains('show')){ wDet.render(items, wSel); wDet.layout(); }
+  wRenderTx();
+  wUpdateActions();
+  requestAnimationFrame(() => wMain.layout());
+}
+window.addEventListener('resize', () => { if(wMain) wMain.layout(); if(wDet) wDet.layout(); });
 
 /* Satu tombol ⋮ per dompet -> sheet berisi "Ubah saldo" dan "Hapus" */
 function openWalletMenu(kind, id){
