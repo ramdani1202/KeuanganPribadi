@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0D9488">
+<meta name="app-build" content="20261006a">
 <meta name="description" content="MoneyPri — pembukuan pribadi sederhana">
 <title>MoneyPri</title>
 <link rel="manifest" href="manifest.json">
@@ -746,6 +747,36 @@
   .settings-row .srl{ font-size:14.5px; font-weight:600; }
   .settings-row .srv{ font-size:13px; color:var(--ink-soft); font-family:var(--mono); }
 
+
+  /* ---- Pengaturan: gaya grup kartu (daftar menu) ---- */
+  #screen-settings{ background:#F5F5F5; }
+  .s-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 14px 12px; background:#FFFFFF; flex-shrink:0; }
+  .s-head h1{ margin:0; font-size:17px; font-weight:700; color:#151515; letter-spacing:-.2px; }
+  .s-back{ width:36px; height:36px; border:0; background:none; border-radius:50%; color:#151515; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .s-back:active{ background:#F0F0F0; }
+  .s-head-sp{ width:36px; }
+  .s-content{ padding:10px 14px 120px !important; background:transparent; }
+  .s-card{ background:#FFFFFF; border-radius:16px; overflow:hidden; }
+  .s-sec{ margin:18px 4px 8px; font-size:13.5px; font-weight:500; color:#5E5E5E; }
+  .s-profile{ display:flex; align-items:center; gap:14px; padding:12px; }
+  .s-ava.avatar{ width:52px; height:52px; font-size:20px; flex-shrink:0; box-shadow:none; cursor:default; }
+  .s-pinfo{ min-width:0; display:flex; flex-direction:column; gap:1px; }
+  .s-pname{ font-size:15.5px; font-weight:700; color:#151515; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .s-psub{ font-size:12.5px; color:#6B6B6B; }
+  .s-pact{ display:flex; align-items:center; gap:14px; margin-top:4px; }
+  .s-edit{ border:0; background:none; padding:0; display:inline-flex; align-items:center; gap:5px; font:600 12.5px var(--sans); color:#2B4FD8; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .s-edit-del{ color:#D1453B; }
+  .s-row{ position:relative; display:flex; align-items:center; gap:14px; padding:0 14px; min-height:50px; color:#151515; -webkit-tap-highlight-color:transparent; }
+  .s-row + .s-row::before{ content:''; position:absolute; top:0; left:48px; right:0; height:1px; background:#EFEFEF; }
+  .s-row.tap{ cursor:pointer; }
+  .s-row.tap:active{ background:#F7F7F7; }
+  .s-ico{ flex-shrink:0; color:#2A2A2A; }
+  .s-label{ flex:1; min-width:0; font-size:14.5px; font-weight:500; }
+  .s-val{ font-size:13.5px; color:#6B6B6B; white-space:nowrap; }
+  .s-chev{ flex-shrink:0; color:#8A8A8A; margin-right:-2px; }
+  .s-row.danger, .s-row.danger .s-ico{ color:#D1453B; }
+  .s-note{ margin:18px 8px 0; text-align:center; font-size:12.5px; line-height:1.55; color:#7A7A7A; }
+
   .update-btn{
     width:36px; height:36px; border-radius:50%; border:none; background:var(--white);
     display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
@@ -1107,46 +1138,51 @@
 
   <!-- ===================== SETTINGS ===================== -->
   <section class="screen" id="screen-settings">
-    <div class="top">
-      <div></div>
+    <div class="s-head">
+      <button class="s-back" onclick="switchTab('home')" aria-label="Kembali"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
       <h1>Pengaturan</h1>
-      <div></div>
+      <span class="s-head-sp"></span>
     </div>
-    <div class="content" style="flex:1;">
-      <div class="profile-card">
-        <div class="avatar-wrap">
-          <div class="avatar big" id="set-avatar"></div>
-          <button class="avatar-edit" onclick="pickProfilePhoto()" aria-label="Ubah foto profil"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A2.5 2.5 0 016.5 6h1.2a1 1 0 00.9-.55l.6-1.1A1 1 0 019.1 4h5.8a1 1 0 01.9.55l.6 1.1a1 1 0 00.9.55h1.2A2.5 2.5 0 0120 8.5v8A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5v-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.2" stroke="currentColor" stroke-width="1.9"/></svg></button>
-        </div>
-        <div class="pc-name" id="set-name-big">-</div>
-        <div class="pc-actions">
-          <button class="pc-link" onclick="pickProfilePhoto()">Ubah foto</button>
-          <button class="pc-link danger" id="btn-del-photo" onclick="removeProfilePhoto()" style="display:none;">Hapus foto</button>
+    <div class="content s-content" style="flex:1;">
+      <div class="s-card s-profile">
+        <div class="avatar s-ava" id="set-avatar"></div>
+        <div class="s-pinfo">
+          <div class="s-pname" id="set-name-big">-</div>
+          <div class="s-psub" id="set-profile-sub">&nbsp;</div>
+          <div class="s-pact">
+            <button class="s-edit" onclick="pickProfilePhoto()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Ubah Profil</button>
+            <button class="s-edit s-edit-del" id="btn-del-photo" onclick="removeProfilePhoto()" style="display:none;">Hapus foto</button>
+          </div>
         </div>
         <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="handlePhotoFile(event)">
       </div>
-      <div class="settings-list">
-        <div class="settings-row"><span class="srl">Nama akun</span><span class="srv" id="set-username">-</span></div>
-        <div class="settings-row"><span class="srl">Jenis penghasilan</span><span class="srv" id="set-incometype">-</span></div>
-        <div class="settings-row"><span class="srl">Total transaksi</span><span class="srv" id="set-txcount">0</span></div>
+
+      <div class="s-sec">Detail akun</div>
+      <div class="s-card">
+        <div class="s-row"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.3 18.3c1.2-2.2 3.2-3.3 5.7-3.3s4.5 1.1 5.7 3.3"/></svg><span class="s-label">Nama akun</span><span class="s-val" id="set-username">-</span></div>
+        <div class="s-row" id="row-income"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5V7M3 13h18"/></svg><span class="s-label">Jenis penghasilan</span><span class="s-val" id="set-incometype">-</span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="s-row tap" onclick="switchTab('history')"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z"/><path d="M9 8h6M9 12h6"/></svg><span class="s-label">Total transaksi</span><span class="s-val" id="set-txcount">0</span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
       </div>
-      <div style="margin-top:24px;">
-        <p class="sub" style="margin-bottom:10px; text-align:left;">Backup data</p>
-        <button class="btn btn-outline" onclick="exportBackup()" style="margin-bottom:10px;">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="margin-right:6px; vertical-align:-3px;"><path d="M12 3v12M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Unduh backup (.json)
-        </button>
-        <button class="btn btn-outline" onclick="triggerImportBackup()" style="margin-bottom:12px;">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="margin-right:6px; vertical-align:-3px;"><path d="M12 21V9M7 14l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Pulihkan dari backup
-        </button>
+
+      <div class="s-sec">Data</div>
+      <div class="s-card">
+        <div class="s-row tap" onclick="exportBackup()"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg><span class="s-label">Unduh backup (.json)</span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="s-row tap" onclick="triggerImportBackup()"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19h14"/></svg><span class="s-label">Pulihkan dari backup</span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
         <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;" onchange="handleImportFile(event)">
       </div>
-      <div style="margin-top:8px;">
-        <button class="btn btn-outline" onclick="handleLogout()" style="margin-bottom:12px;">Keluar akun</button>
-        <button class="btn btn-danger" onclick="confirmReset()">Hapus semua data akun ini</button>
+
+      <div class="s-sec">Umum</div>
+      <div class="s-card">
+        <div class="s-row tap" onclick="manualCheckUpdate()"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6"/></svg><span class="s-label">Cek pembaruan</span><span class="s-val" id="set-build"></span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
       </div>
-      <p class="sub" style="margin-top:20px; text-align:center;">Data tersimpan di perangkat ini saja dan akan ikut terhapus jika app dihapus/di-uninstall. Unduh backup secara berkala biar aman.</p>
+
+      <div class="s-sec">Lainnya</div>
+      <div class="s-card">
+        <div class="s-row tap" onclick="handleLogout()"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3M15 8l4 4-4 4M19 12H9"/></svg><span class="s-label">Keluar akun</span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="s-row tap danger" onclick="confirmReset()"><svg class="s-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10 11v5M14 11v5"/></svg><span class="s-label">Hapus semua data akun ini</span><svg class="s-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+
+      <p class="s-note">Data tersimpan di perangkat ini saja dan akan ikut terhapus jika app dihapus/di-uninstall. Unduh backup secara berkala biar aman.</p>
     </div>
     <div class="tabbar">
       <button class="tab-btn" onclick="switchTab('home')" aria-label="Beranda">
@@ -1224,7 +1260,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="app.js"></script>
-<script src="content.js"></script>
+<script src="app.js?b=20261006a"></script>
+<script src="content.js?b=20261006a"></script>
 </body>
 </html>

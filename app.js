@@ -1225,11 +1225,16 @@ function refreshSettings(){
   refreshAvatars();
   const labels = { gaji:'Gaji', usaha:'Usaha', keduanya:'Gaji & usaha' };
   const incEl = document.getElementById('set-incometype');
-  incEl.textContent = (labels[currentData.incomeType] || '-') + '  ›';
+  incEl.textContent = labels[currentData.incomeType] || '-';
   const incRow = incEl.parentElement;
-  incRow.style.cursor = 'pointer';
+  incRow.classList.add('tap');
   incRow.onclick = openIncomeTypeModal;
-  document.getElementById('set-txcount').textContent = currentData.transactions.length;
+  const n = currentData.transactions.length;
+  document.getElementById('set-txcount').textContent = n;
+  const sub = document.getElementById('set-profile-sub');
+  if(sub) sub.textContent = n + ' transaksi tercatat';
+  const bd = document.getElementById('set-build');
+  if(bd) bd.textContent = (typeof APP_BUILD !== 'undefined' && APP_BUILD) ? 'build ' + APP_BUILD : '';
 }
 
 function openIncomeTypeModal(){
@@ -1348,22 +1353,88 @@ function initServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
 
   const versionLabel = document.getElementById('app-version-label');
-  if(versionLabel) versionLabel.textContent = 'Auto-update aktif';
+  if(versionLabel) versionLabel.textContent = 'Auto-update aktif' + (APP_BUILD ? ' · build ' + APP_BUILD : '');
 
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
 
-// Tombol ↻ manual: karena file inti (index.html/app.js) sudah
-// network-first, cara paling pasti untuk "cek update sekarang" adalah
-// muat ulang halaman langsung dari server.
-function manualCheckUpdate(){
+/* ---------- Pembaruan otomatis ----------
+   Setiap rilis punya "build" (meta app-build di index.html). Saat aplikasi dibuka
+   atau dibuka kembali dari latar belakang, build yang sedang jalan dibandingkan
+   dengan build terbaru di server. Kalau beda, cache dibersihkan lalu halaman
+   dimuat ulang dari server -- jadi APK tidak tertahan di versi lama. */
+const APP_BUILD = (document.querySelector('meta[name="app-build"]') || {}).content || '';
+let lastBuildCheck = 0;
+
+async function fetchLatestBuild(){
+  const r = await fetch('index.html?cb=' + Date.now(), { cache: 'no-store' });
+  if(!r.ok) throw new Error('http ' + r.status);
+  const t = await r.text();
+  const m = t.match(/<meta name="app-build" content="([^"]+)"/);
+  return m ? m[1] : '';
+}
+
+async function hardRefresh(){
+  try{ localStorage.setItem('cu_refresh_ts', String(Date.now())); }catch(_){}
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if(window.caches){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  }catch(_){}
+  const u = new URL(location.href);
+  u.searchParams.set('r', Date.now());
+  location.replace(u.toString());
+}
+
+function showUpdateBanner(){
+  if(document.getElementById('update-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'update-banner';
+  b.style.cssText = 'position:fixed;left:16px;right:16px;top:calc(12px + env(safe-area-inset-top));z-index:9998;background:#0B2B29;color:#fff;border-radius:16px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 14px 30px -10px rgba(0,0,0,.5);font-family:inherit;font-size:14px;font-weight:700;';
+  b.innerHTML = '<span style="flex:1">Versi baru tersedia</span>' +
+    '<button id="update-banner-go" style="border:0;border-radius:999px;padding:9px 16px;background:#14B8A6;color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Perbarui</button>' +
+    '<button id="update-banner-x" aria-label="Tutup" style="border:0;background:none;color:#fff;opacity:.7;font-size:18px;padding:4px 8px;cursor:pointer">✕</button>';
+  document.body.appendChild(b);
+  document.getElementById('update-banner-go').onclick = () => { b.remove(); hardRefresh(); };
+  document.getElementById('update-banner-x').onclick = () => b.remove();
+}
+
+// mode: 'start' (otomatis saat dibuka) | 'resume' (kembali dari latar belakang) | 'manual' (tombol)
+async function checkForNewBuild(mode){
+  lastBuildCheck = Date.now();
+  if(!navigator.onLine) return 'offline';
+  let latest;
+  try{ latest = await fetchLatestBuild(); }catch(_){ return 'error'; }
+  if(!latest || !APP_BUILD || latest === APP_BUILD) return 'same';
+  const recent = Date.now() - Number(localStorage.getItem('cu_refresh_ts') || 0) < 180000;
+  if(mode !== 'manual' && recent) return 'same';   // cegah muat ulang berulang
+  if(mode === 'resume'){ showUpdateBanner(); return 'new'; }
+  await hardRefresh();
+  return 'new';
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && Date.now() - lastBuildCheck > 45000) checkForNewBuild('resume');
+});
+window.addEventListener('online', () => checkForNewBuild('resume'));
+
+// Tombol ↻ manual: cek build terbaru, kalau berbeda langsung perbarui.
+async function manualCheckUpdate(){
   setUpdateBtnState('checking');
   showToast('Mengecek pembaruan…');
-  setTimeout(() => {
-    window.location.reload();
-  }, 400);
+  const res = await checkForNewBuild('manual');
+  if(res === 'new') return;                       // sedang memuat ulang
+  setUpdateBtnState('');
+  if(res === 'same') showToast('Sudah versi terbaru');
+  else if(res === 'offline') showToast('Tidak ada koneksi internet');
+  else showToast('Gagal mengecek pembaruan');
 }
 
 /* =========================================================
@@ -1560,9 +1631,16 @@ function hideSplash(){
   }catch(e){
     goTo('screen-login');
   }
-  // buka splash setelah layar tujuan tergambar (minimal tampil sebentar supaya terasa mulus)
-  const wait = Math.max(0, 600 - (window.performance && performance.now ? performance.now() : 0));
-  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(hideSplash, wait)));
+  // buka splash setelah layar tujuan tergambar dan pengecekan versi selesai
+  // (kalau ada versi baru, halaman dimuat ulang sementara splash tetap tampil)
+  (async () => {
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const minWait = Math.max(0, 600 - (window.performance && performance.now ? performance.now() : 0));
+    const check = Promise.race([checkForNewBuild('start'), new Promise(r => setTimeout(() => r('timeout'), 1800))]);
+    await new Promise(r => setTimeout(r, minWait));
+    const res = await check;
+    if(res !== 'new') hideSplash();
+  })();
 })();
 
 // pengaman: kalau karena apa pun belum ada layar yang aktif, tampilkan login
