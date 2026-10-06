@@ -1,132 +1,285 @@
-# Catatan Uang — PWA
+<div align="center">
 
-Aplikasi pencatatan keuangan pribadi. Bisa diinstall di Chrome (HP/laptop) seperti aplikasi biasa, setelah di-upload ke GitHub Pages.
+<img src="icons/icon-192.png" alt="Logo MoneyPri" width="96" height="96">
+
+# MoneyPri
+
+**Pembukuan keuangan pribadi yang sederhana, privat, dan bisa dipakai offline.**
+
+Progressive Web App (PWA) berbahasa Indonesia untuk mencatat pemasukan, pengeluaran, serta saldo bank, e-wallet, dan uang tunai. Seluruh data tersimpan di perangkat pengguna, tanpa server dan tanpa database.
+
+[Fitur](#fitur) · [Instalasi](#instalasi-dan-deployment) · [Arsitektur](#arsitektur) · [Konfigurasi Konten](#mengelola-konten-video) · [Keamanan](#keamanan-dan-privasi) · [Pemecahan Masalah](#pemecahan-masalah)
+
+</div>
+
+---
+
+## Ikhtisar
+
+MoneyPri dirancang untuk individu yang ingin memantau arus kas harian tanpa harus membuat akun di layanan pihak ketiga. Aplikasi berjalan sepenuhnya di sisi klien (client-side) sebagai kumpulan file statis, sehingga dapat di-host gratis di GitHub Pages dan dipasang di layar utama ponsel seperti aplikasi biasa.
+
+| | |
+|---|---|
+| **Platform** | Web (PWA), Android (APK opsional via Capacitor) |
+| **Teknologi** | HTML, CSS, dan JavaScript murni, tanpa framework dan tanpa proses build |
+| **Penyimpanan** | `localStorage` peramban |
+| **Backend** | Tidak ada |
+| **Bahasa antarmuka** | Indonesia |
+| **Mata uang** | Rupiah (IDR) |
 
 ## Fitur
 
-- Multi-akun (nama + kata sandi), tiap akun datanya terpisah total. Sandi di-hash PBKDF2-SHA256 + salt (akun lama di-upgrade otomatis saat login)
-- Onboarding: jenis penghasilan → daftar bank → daftar e-wallet → saldo bank → saldo e-wallet → uang cash
-- Beranda: grafik pemasukan & pengeluaran (mingguan/bulanan), kotak **Masuk/Keluar hari ini**, dan total saldo
-- **Berita** dan **Buku PDF** di bagian bawah Beranda, isinya Anda unggah sendiri lewat GitHub (lihat bagian "Berita & Buku PDF")
-- Foto profil bisa diunggah dari Pengaturan
-- Catat transaksi dengan pilih sumber dana (bank / e-wallet / cash)
-- Riwayat transaksi lengkap dengan filter dan hapus
-- Tab **Dompet**: tambah/hapus bank & e-wallet, dan **ketuk baris mana pun (bank, e-wallet, cash) untuk mengisi/mengubah saldo**
-- Peringatan sebelum mencatat pengeluaran yang membuat saldo minus
-- Jenis penghasilan bisa diubah di Pengaturan; onboarding punya tombol kembali
-- Backup & restore data ke file `.json` (file backup divalidasi saat dipulihkan)
-- Cetak struk PDF (mirip struk Alfamart/Indomaret) langsung dari HP; tinggi struk menyesuaikan jumlah transaksi dan library PDF di-cache untuk offline
-- Data tersimpan permanen di localStorage browser (hilang hanya jika data browser dihapus)
-- Bisa diinstall sebagai PWA (icon di homescreen, tampil fullscreen tanpa address bar)
+### Pencatatan keuangan
+- **Pemasukan dan pengeluaran** dengan pilihan sumber dana: rekening bank, e-wallet, atau uang tunai.
+- **Pembaruan saldo otomatis** pada setiap transaksi. Menghapus transaksi akan mengembalikan saldo.
+- **Peringatan saldo minus** sebelum pengeluaran dicatat.
+- **Input nominal berformat ribuan** (contoh `1.000.000`) dengan posisi kursor yang terjaga.
+- **Riwayat transaksi** lengkap dengan filter Semua, Pemasukan, dan Pengeluaran.
+- **Struk PDF** bergaya struk kasir (lebar 80 mm). Tinggi kertas menyesuaikan jumlah transaksi.
 
-## Cara upload ke GitHub Pages (langkah lengkap)
+### Dompet
+- Tumpukan kartu yang dapat digeser dengan gestur sentuh, lengkap dengan momentum dan efek tarik di ujung.
+- Katalog logo bawaan: **SeaBank, BCA, BRI, BNI, Mandiri, Jago, Neobank, KromBank** (bank) dan **GoPay, DANA, OVO, ShopeePay** (e-wallet).
+- Boleh menambahkan bank yang sama lebih dari sekali, misalnya dua rekening BCA.
+- Ubah atau koreksi saldo kapan saja. Perubahan saldo manual tidak dihitung sebagai transaksi.
+- Tombol **Buka aplikasi** untuk meluncurkan aplikasi bank atau e-wallet terkait di Android.
 
-1. Buat repository baru di GitHub, contoh nama: `catatan-uang`
-2. Upload **semua file di folder ini** (index.html, app.js, manifest.json, sw.js, folder icons/) ke repository tersebut — bisa lewat "Add file → Upload files" di web GitHub, tidak perlu command line
-3. Buka tab **Settings** di repository → menu **Pages** di sidebar kiri
-4. Di bagian **Source**, pilih branch `main` dan folder `/ (root)`, lalu klik **Save**
-5. Tunggu 1-2 menit, GitHub akan kasih link seperti:
-   `https://namakamu.github.io/catatan-uang/`
-6. Buka link itu di **Chrome HP**
-7. Ketuk menu titik tiga (⋮) di Chrome → pilih **"Tambahkan ke layar Utama"** atau akan muncul otomatis banner "Install app"
-8. Aplikasi akan muncul di homescreen HP seperti aplikasi biasa
+### Beranda
+- Grafik batang pemasukan dan pengeluaran, **mingguan** (7 hari) atau **bulanan** (6 bulan).
+- Ringkasan **Masuk hari ini**, **Keluar hari ini**, dan **Total saldo**.
+- Bagian **Videos**: daftar video edukasi keuangan dari YouTube dengan My List, rating bintang, pelacakan progres tonton per akun, dan pencarian.
 
-## Struktur file
+### Akun dan data
+- **Multi-akun** pada satu perangkat. Data tiap akun terpisah sepenuhnya.
+- **Backup dan restore** ke file `.json` dengan validasi dan sanitasi saat impor.
+- **Foto profil** dari galeri, dipotong persegi dan dikompres otomatis.
+- **Jenis penghasilan** (gaji, usaha, atau keduanya) dapat diubah kapan saja.
+
+### Operasional
+- **Mode offline**: aplikasi tetap dapat dibuka tanpa internet.
+- **Pembaruan otomatis** tanpa perlu menaikkan nomor versi secara manual.
+- **Dapat dipasang** di layar utama dan tampil layar penuh.
+
+## Instalasi dan Deployment
+
+### Prasyarat
+- Akun [GitHub](https://github.com)
+- Peramban modern (disarankan Chrome di Android)
+
+> Aplikasi **harus diakses lewat HTTPS** (atau `localhost`). Hash kata sandi memakai Web Crypto API yang hanya tersedia pada konteks aman. GitHub Pages sudah menyediakan HTTPS.
+
+### Langkah deployment ke GitHub Pages
+
+1. Buat repository baru, misalnya `moneypri`.
+2. Unggah seluruh isi proyek ke root repository: `index.html`, `app.js`, `content.js`, `sw.js`, `manifest.json`, `videos.json`, dan folder `icons/`.
+3. Buka **Settings → Pages**.
+4. Pada **Source**, pilih branch `main` dan folder `/ (root)`, lalu simpan.
+5. Tunggu 1 sampai 2 menit. Alamat aplikasi akan tampil, misalnya `https://<username>.github.io/moneypri/`.
+
+### Memasang di ponsel
+1. Buka alamat aplikasi di Chrome.
+2. Ketuk menu **⋮ → Tambahkan ke layar utama** (atau gunakan banner *Install app* bila muncul).
+3. Aplikasi muncul di layar utama dan berjalan layar penuh.
+
+### Menjalankan secara lokal
+
+```bash
+# dari folder proyek
+python3 -m http.server 8080
+# buka http://localhost:8080
+```
+
+`localhost` dianggap konteks aman, jadi fitur sandi dan service worker tetap berfungsi.
+
+## Membangun APK Android (opsional)
+
+Repository menyertakan workflow `.github/workflows/build-apk.yml` yang membungkus aplikasi web menjadi APK memakai [Capacitor](https://capacitorjs.com) 7. APK memuat alamat web Anda, jadi pembaruan konten cukup dilakukan lewat GitHub tanpa membuat APK baru.
+
+1. Buka tab **Actions** → **Build APK Android** → **Run workflow**.
+2. (Opsional) isi `site_url`. Jika dikosongkan, alamat diturunkan otomatis menjadi `https://<owner>.github.io/<repo>/`.
+3. Setelah selesai, unduh `MoneyPri.apk` dari halaman **Releases**.
+
+Workflow ini juga:
+- menambahkan plugin native **AppOpener** untuk membuka aplikasi bank dan e-wallet,
+- mendaftarkan nama paket aplikasi tersebut pada `<queries>` (wajib sejak Android 11),
+- membuat ikon peluncur dari `icons/icon-512.png` dan menyamakan warna status bar dengan tema.
+
+> **Catatan keamanan:** keystore penandatanganan saat ini tertanam di file workflow. Untuk penggunaan produksi atau repository publik, pindahkan ke **GitHub Secrets**. Lihat [Keamanan dan Privasi](#keamanan-dan-privasi).
+
+## Arsitektur
 
 ```
-catatan-uang/
-├── index.html       ← halaman utama & semua UI
-├── app.js            ← semua logika aplikasi
-├── content.js        ← berita, daftar buku, dan pembaca PDF
-├── manifest.json      ← konfigurasi PWA
-├── sw.js              ← service worker (dukungan offline)
-├── README.md
-├── lib/              ← pembaca PDF (pdf.js, sudah disertakan, jangan dihapus)
-├── content/          ← ISI BERITA & BUKU ANDA
-│   ├── news.json     ← daftar berita
-│   ├── books.json    ← daftar buku PDF
-│   ├── news/         ← gambar berita (.jpg/.png)
-│   └── books/        ← cover (.jpg) dan file buku (.pdf)
-└── icons/
-    ├── icon-192.png
-    ├── icon-512.png
-    ├── icon-maskable.png
-    ├── banks/       ← logo bank
-    └── ewallets/    ← logo e-wallet
+Peramban / WebView
+│
+├── index.html        Markup, seluruh layar dan modal, serta CSS
+├── app.js            Logika inti: auth, onboarding, transaksi, dompet, backup, PDF, update
+├── content.js        Bagian video Beranda dan pemutar YouTube
+├── sw.js             Service worker (cache offline, network-first)
+│
+└── localStorage      Satu-satunya penyimpanan data
 ```
 
-## Berita & Buku PDF
+### Struktur proyek
 
-Semua berita dan buku diunggah **lewat GitHub saja** (tanpa server). Aplikasi membaca dua file daftar, lalu menampilkannya di bagian bawah Beranda.
+```
+.
+├── .github/
+│   └── workflows/
+│       └── build-apk.yml     Pipeline build APK Android
+├── icons/
+│   ├── icon-192.png          Ikon aplikasi
+│   ├── icon-512.png
+│   ├── icon-maskable.png
+│   ├── banks/                Logo bank
+│   └── ewallets/             Logo e-wallet
+├── app.js                    Logika aplikasi
+├── content.js                Konten dan pemutar video
+├── index.html                Antarmuka
+├── manifest.json             Konfigurasi PWA
+├── sw.js                     Service worker
+├── videos.json               Daftar video Beranda
+└── README.md
+```
 
-### Menambah berita
-1. Upload gambar ke folder `content/news/` (mis. `berita-baru.jpg`, disarankan rasio 16:10, lebar sekitar 900 px).
-2. Buka `content/news.json` di GitHub → ikon pensil (Edit), tambahkan satu blok di dalam daftar `news`:
+### Model data
 
-```json
+Seluruh data disimpan di `localStorage` dengan kunci berikut.
+
+| Kunci | Isi |
+|---|---|
+| `cu_users` | `{ username: { algo, salt, iter, passHash, createdAt } }` |
+| `cu_data_<user>` | Data keuangan satu akun (lihat di bawah) |
+| `cu_session` | Nama akun yang sedang masuk |
+| `cu_watch_<user>_<id>` | Progres tonton video |
+| `cu_fav_<user>` | Daftar My List |
+| `cu_rate_<user>` | Rating video |
+| `cu_lastsrc_<user>_<in\|out>` | Sumber dana terakhir yang dipakai |
+| `cu_ytm_<id>` | Cache judul dan channel video |
+
+Struktur `cu_data_<user>`:
+
+```jsonc
 {
-  "id": "n6",
-  "title": "Judul berita",
-  "source": "Nama sumber",
-  "date": "2026-10-05",
-  "image": "content/news/berita-baru.jpg",
-  "summary": "Ringkasan singkat (opsional)",
-  "body": ["Paragraf pertama.", "Paragraf kedua."],
-  "link": "https://contoh.com/artikel-asli"
+  "incomeType": "gaji | usaha | keduanya",
+  "profilePhoto": "data:image/jpeg;base64,...",
+  "banks":    [{ "id": "...", "key": "bca", "name": "BCA", "logo": "icons/banks/bca.png" }],
+  "ewallets": [{ "id": "...", "key": "gopay", "name": "GoPay", "logo": "icons/ewallets/gopay.png" }],
+  "balances": { "bank": { "<id>": 0 }, "ewallet": { "<id>": 0 }, "cash": 0 },
+  "transactions": [{
+    "id": "...", "type": "in | out", "amount": 50000, "name": "Makan siang",
+    "source": { "type": "bank | ewallet | cash", "id": "...", "name": "BCA" },
+    "date": "2026-10-06T08:30:00.000Z"
+  }]
 }
 ```
 
-- Urutan di file = urutan di aplikasi. **3 berita pertama** tampil sebagai kartu besar, sisanya di "Berita lainnya".
-- `body` boleh berupa daftar paragraf (seperti di atas) atau satu teks dengan baris kosong antarparagraf. `image`, `summary`, dan `link` boleh dikosongkan (`link` hanya `https://`).
-- Hati-hati dengan tanda koma dan kutip di file JSON. Kalau ada yang salah, bagian itu tidak tampil.
+### Strategi cache dan pembaruan
 
-### Menambah buku PDF
-1. Upload file PDF ke `content/books/` (mis. `buku-saya.pdf`) dan cover ke folder yang sama (mis. `buku-saya.jpg`, rasio 3:4, lebar sekitar 600 px). Cover boleh dikosongkan, aplikasi membuat sampul warna otomatis.
-2. Edit `content/books.json`, tambahkan di dalam daftar `books`:
+| Jenis berkas | Strategi |
+|---|---|
+| `index.html`, `app.js`, `content.js`, `manifest.json`, `videos.json` | **Network-first** (`no-store`). Cache hanya untuk offline. |
+| jsPDF (CDN) | **Cache-first**, disimpan saat instalasi agar struk dapat dicetak offline. |
+| Ikon dan aset statis | **Stale-while-revalidate** |
+| Domain lain (YouTube, thumbnail) | Langsung ke jaringan, tidak dicegat |
+
+Deteksi versi memakai tag `<meta name="app-build">` di `index.html`. Saat aplikasi dibuka atau kembali dari latar belakang, nilai itu dibandingkan dengan versi di server. Jika berbeda, cache dibersihkan dan halaman dimuat ulang. Ada pengaman agar tidak terjadi muat ulang berulang dalam 3 menit.
+
+**Alur rilis:** ubah file, naikkan nilai `app-build` di `index.html` (dan parameter `?b=` pada tag `<script>`), lalu unggah ke GitHub. Pengguna online menerima versi baru pada pembukaan berikutnya. Tidak ada perubahan di `sw.js`.
+
+## Mengelola Konten Video
+
+Daftar video dibaca dari `videos.json` di root repository, tanpa server.
 
 ```json
 {
-  "id": "b4",
-  "title": "Judul buku",
-  "author": "Penulis",
-  "cover": "content/books/buku-saya.jpg",
-  "file": "content/books/buku-saya.pdf"
+  "videos": [
+    {
+      "url": "https://youtu.be/XXXXXXXXXXX",
+      "title": "Judul video",
+      "author": "Nama channel",
+      "category": "Finance",
+      "desc": "Deskripsi singkat"
+    }
+  ]
 }
 ```
 
-- Buku tampil di baris yang bisa digeser kiri-kanan. Ketuk untuk membaca langsung di aplikasi (gulir ke bawah, tombol − / + untuk zoom, tombol Kembali HP untuk menutup).
-- Halaman terakhir yang dibaca diingat per akun dan muncul sebagai bar progres di bawah cover.
-- `id` tiap berita/buku harus unik. Nama file sebaiknya tanpa spasi.
-- Setelah dibuka sekali, buku tersimpan dan bisa dibaca **offline**. **Jika Anda mengganti isi PDF, beri nama file baru** supaya HP mengunduh versi barunya.
-- Ukuran PDF sebaiknya di bawah sekitar 30 MB. Batas GitHub per file 100 MB, tetapi file besar lama dimuat di HP. PDF yang dikunci dengan sandi belum didukung.
-- Berita dan daftar buku selalu diambil terbaru saat online (cache hanya cadangan saat offline).
-- Isi contoh yang disertakan (berita "MoneyPri" dan 3 buku contoh) boleh dihapus atau diganti.
+| Properti | Wajib | Keterangan |
+|---|:---:|---|
+| `url` | Ya | Tautan YouTube (`youtu.be`, `watch`, `embed`, `shorts`, `live`) atau ID 11 karakter |
+| `title` | Tidak | Jika kosong, diambil otomatis dari YouTube saat online |
+| `author` | Tidak | Jika kosong, diambil otomatis dari YouTube saat online |
+| `category` | Tidak | Label kategori |
+| `desc` | Tidak | Deskripsi, maksimal 600 karakter |
+| `thumb` | Tidak | URL thumbnail kustom (HTTPS atau path relatif) |
 
-## Auto-update (tidak perlu naikkan versi manual)
+**Ketentuan:**
+- Maksimal **80 video**. Duplikat dan tautan tidak valid diabaikan.
+- Thumbnail dibuat otomatis dari YouTube.
+- Video hanya dapat diputar saat perangkat **online**.
+- Progres tonton disimpan **per akun**.
+- Kesalahan tanda koma atau kutip pada JSON membuat daftar gagal dimuat. Periksa dengan validator JSON sebelum menyimpan.
 
-App ini auto-update sepenuhnya — **kamu tidak perlu mengubah apa pun di `sw.js` tiap kali deploy**, dan user tidak perlu clear cache Chrome manual.
+## Backup dan Pemulihan
 
-**Cara kerjanya:**
-- File inti (`index.html`, `app.js`, `manifest.json`) diambil dengan strategi **network-first**: setiap kali file itu dibutuhkan dan user online, browser **selalu ambil versi terbaru langsung dari server** (bukan dari cache).
-- Cache di `sw.js` hanya dipakai sebagai cadangan untuk mode **offline** (kalau tidak ada internet).
-- Karena itu, begitu kamu upload ulang `index.html` atau `app.js` yang sudah diedit ke GitHub Pages, request berikutnya dari user (reload halaman / buka app lagi) otomatis dapat versi terbaru — **tanpa perlu naikkan nomor versi apa pun**.
-- Tombol lingkaran ↻ di pojok kanan atas halaman login bisa dipakai untuk memuat ulang halaman kapan saja secara manual (berguna kalau user mau cek update sekarang juga).
+**Pengaturan → Data**
 
-**Cara deploy update sekarang cukup:**
-1. Edit file (`index.html` / `app.js` / dll) seperlunya
-2. Upload ulang / replace file yang sama di GitHub (nama file harus sama)
-3. Selesai — tidak ada langkah tambahan lain
+| Aksi | Hasil |
+|---|---|
+| **Unduh backup** | File `backup-moneypri-<akun>-<tanggal>.json` berisi data akun dan catatan sandi |
+| **Pulihkan backup** | Memvalidasi dan membersihkan isi file, lalu menimpa data akun. Jika akun sudah ada, ada konfirmasi terlebih dahulu. |
 
-**Catatan:** strategi ini mengutamakan "selalu versi terbaru saat online" dibanding "hemat kuota/loading instan dari cache". Untuk app sesederhana ini bedanya nyaris tidak terasa (file kecil), tapi kalau suatu saat filenya jadi besar, pertimbangkan pakai hashing di nama file per deploy (butuh build step) untuk performa maksimal.
+Karena data hanya ada di peramban, backup berkala sangat disarankan, terutama sebelum mengganti ponsel, menghapus data peramban, atau menghapus aplikasi.
 
-## Catatan penting
+## Keamanan dan Privasi
 
-- **Data disimpan di browser (localStorage)**, bukan di server/cloud. Artinya:
-  - Aman dan privat — tidak ada yang bisa akses dari luar
-  - Tidak otomatis sinkron antar HP/browser berbeda
-  - Data akan **hilang** kalau kamu hapus "Data browsing" / "Clear browsing data" di Chrome untuk situs ini
-- Kata sandi disimpan sebagai hash (PBKDF2 + salt) dan hanya melindungi tampilan aplikasi. Data transaksi sendiri tidak dienkripsi di localStorage, jadi jangan dianggap pengaman tingkat bank
-- Pembuatan/pemeriksaan sandi butuh koneksi aman (https atau localhost) — GitHub Pages sudah https
-- "Hari ini" mengikuti tanggal lokal perangkat (ganti tepat tengah malam)
-- Mengubah saldo di tab Dompet tidak dicatat sebagai transaksi, jadi tidak memengaruhi angka Pemasukan/Pengeluaran
-- Karena semua logika berjalan di sisi browser (client-side), tidak perlu server/backend/database tambahan — cukup file statis
+**Yang dilakukan aplikasi**
+- Tidak ada data yang dikirim ke server mana pun. Semua tersimpan lokal.
+- Sandi di-hash dengan **PBKDF2-SHA256**, salt acak 16 byte, 100.000 iterasi. Akun lama dengan hash sederhana di-upgrade otomatis saat login.
+- Semua teks yang ditampilkan di-escape (`escapeHtml`). File backup dan `videos.json` divalidasi dan dibersihkan sebelum dipakai.
+- Nama akun berbahaya (`__proto__`, `constructor`, `prototype`) ditolak.
+
+**Batasan yang perlu dipahami**
+- Sandi hanya mengunci **tampilan aplikasi**. Data transaksi di `localStorage` **tidak dienkripsi**, jadi jangan anggap ini pengaman tingkat bank.
+- Tidak ada pembatasan jumlah percobaan login.
+- File backup memuat hash dan salt sandi. Simpan di tempat aman, dan gunakan sandi yang panjang karena batas minimum hanya 4 karakter.
+- Menghapus data situs atau meng-uninstall aplikasi **menghapus semua data** yang belum di-backup.
+
+**Rekomendasi untuk deployment**
+- Pindahkan keystore penandatanganan APK dari `build-apk.yml` ke **GitHub Secrets** bila repository bersifat publik.
+- Jangan membagikan file backup lewat kanal yang tidak tepercaya.
+
+## Pemecahan Masalah
+
+| Gejala | Penyebab dan solusi |
+|---|---|
+| "Buka lewat https agar sandi bisa diperiksa" | Aplikasi dibuka lewat HTTP biasa. Gunakan GitHub Pages atau `localhost`. |
+| Video tidak muncul | Periksa format `videos.json`, lalu muat ulang. Lihat juga koneksi internet. |
+| Video tidak bisa diputar | Pemilik video melarang pemutaran di aplikasi lain. Gunakan **Open in YouTube**. |
+| "Library PDF belum termuat" | jsPDF belum pernah diunduh. Hubungkan internet sekali, lalu coba lagi. |
+| Versi lama masih tampil | Ketuk tombol ↻ di halaman login atau **Pengaturan → Cek pembaruan**. |
+| Tombol buka aplikasi bank membuka Play Store | Aplikasi belum terpasang, atau nama paketnya perlu disesuaikan di `APP_PACKAGES` pada `app.js`. |
+| Data hilang | Data peramban terhapus atau aplikasi di-uninstall. Pulihkan dari file backup. |
+
+## Pengembangan
+
+Proyek ini tidak memerlukan build. Edit file, lalu muat ulang peramban.
+
+- **Menambah bank atau e-wallet:** tambahkan logo di `icons/banks/` atau `icons/ewallets/`, daftarkan di `BANK_CATALOG` atau `EWALLET_CATALOG` pada `app.js`, dan (opsional) nama paket Android di `APP_PACKAGES`. Tambahkan juga ke daftar `ASSETS` di `sw.js` agar tersedia offline.
+- **Mengubah tema warna:** variabel CSS berada di blok `:root` pada `index.html`.
+- **Rilis:** naikkan nilai `app-build` seperti dijelaskan di [Strategi cache dan pembaruan](#strategi-cache-dan-pembaruan).
+
+## Keterbatasan yang diketahui
+
+- Tidak ada sinkronisasi antar perangkat. Gunakan backup dan restore untuk memindahkan data.
+- Mata uang tunggal (Rupiah) dan tanpa kategori transaksi.
+- Pemutar video memerlukan internet.
+- Membuka aplikasi bank hanya tersedia di Android.
+
+---
+
+<div align="center">
+
+**MoneyPri** · Catat uang, tanpa ribet, tanpa server.
+
+</div>
