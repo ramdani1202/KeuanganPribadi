@@ -55,6 +55,16 @@ function nativeAppOpener(){
   return null;
 }
 
+/* Plugin native "FileSaver" (APK): menyimpan file ke folder Download lewat MediaStore */
+function nativeFileSaver(){
+  const c = window.Capacitor;
+  if(!c || (typeof c.isNativePlatform === 'function' && !c.isNativePlatform())) return null;
+  if(c.Plugins && c.Plugins.FileSaver) return c.Plugins.FileSaver;
+  if(typeof c.registerPlugin === 'function'){ try{ return c.registerPlugin('FileSaver'); }catch(_){} }
+  return null;
+}
+function safeFileName(s){ return String(s == null ? '' : s).replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,40) || 'akun'; }
+
 function openExternalApp(key, name){
   const app = APP_PACKAGES[key];
   if(!app) return;
@@ -1680,33 +1690,59 @@ async function manualCheckUpdate(){
    men-download seluruh datanya jadi file .json, dan memulihkannya
    lagi nanti (misal setelah reinstall / ganti HP).
    ========================================================= */
-function exportBackup(){
+async function exportBackup(){
   if(!currentUser || !currentData){ showToast('Belum ada akun yang login'); return; }
 
   const users = getUsers();
-  const userRecord = users[currentUser];
-
   const backup = {
     app: 'MoneyPri',
     backupVersion: 1,
     exportedAt: new Date().toISOString(),
     username: currentUser,
-    userRecord: userRecord,
+    userRecord: users[currentUser],
     data: currentData
   };
-
   const json = JSON.stringify(backup, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `backup-moneypri-${currentUser}-${todayKey()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const fileName = `backup-moneypri-${safeFileName(currentUser)}-${todayKey()}.json`;
 
-  showToast('Backup berhasil diunduh');
+  // 1) APK Android: simpan langsung ke folder Download (hanya klaim berhasil kalau benar-benar tertulis)
+  const saver = nativeFileSaver();
+  if(saver){
+    try{
+      await saver.save({ name: fileName, data: json, mime: 'application/json' });
+      showToast('Tersimpan di folder Download: ' + fileName);
+      return;
+    }catch(_){ /* APK lama tanpa plugin / gagal tulis -> coba cara berikutnya */ }
+  }
+
+  // 2) HP (PWA / WebView): buka menu bagikan agar pengguna memilih tempat simpan (Files, Drive, WhatsApp, dll.)
+  let file = null;
+  try{ file = new File([json], fileName, { type: 'application/json' }); }catch(_){}
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isMobile && file && navigator.canShare && navigator.canShare({ files: [file] })){
+    try{
+      await navigator.share({ files: [file], title: 'Backup MoneyPri' });
+      showToast('Pilih tujuan di menu untuk menyimpan backup');
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError'){ showToast('Backup dibatalkan'); return; }
+    }
+  }
+
+  // 3) Peramban biasa: unduh lewat tautan. URL baru dilepas setelah jeda supaya unduhan sempat dimulai.
+  try{
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 30000);
+    showToast('Unduhan dimulai. Cek folder Download atau notifikasi unduhan');
+  }catch(_){
+    showToast('Gagal menyimpan backup di perangkat ini');
+  }
 }
 
 function triggerImportBackup(){
