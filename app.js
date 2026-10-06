@@ -203,6 +203,8 @@ function goTo(screenId){
   const current = document.querySelector('.screen.active');
   const next = document.getElementById(screenId);
   if(!next || current === next) return;
+  const tc = document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.setAttribute('content', (screenId === 'screen-login' || screenId === 'screen-register') ? '#0B0706' : '#0D9488');
 
   if(!current){
     next.classList.add('active');
@@ -1563,6 +1565,18 @@ function printReceipt(){
    baru langsung kepakai di request berikutnya. Tidak perlu ubah
    apa pun di sw.js setiap deploy.
    ========================================================= */
+function showAuthInfo(){
+  showToast('Datamu tersimpan di perangkat ini saja. Buat backup berkala di Pengaturan.');
+}
+
+function toggleAuthPass(id, btn){
+  const inp = document.getElementById(id);
+  if(!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  if(btn) btn.classList.toggle('on', show);
+}
+
 function setUpdateBtnState(mode){
   const btn = document.getElementById('update-check-btn');
   if(!btn) return;

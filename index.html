@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0D9488">
-<meta name="app-build" content="20261006b">
+<meta name="app-build" content="20261006c">
 <meta name="description" content="MoneyPri — pembukuan pribadi sederhana">
 <title>MoneyPri</title>
 <link rel="manifest" href="manifest.json">
@@ -846,6 +846,57 @@
   #wallet-detail .wc-bal{ font-size:28px; }
   #wallet-detail .wc-bal.sm{ font-size:23px; }
 
+
+  /* ---- Masuk & Daftar: tema gelap hangat, tombol pil (gaya referensi) ---- */
+  .auth{ position:relative; overflow:hidden; background:#0B0706; color:#F1EEE8; }
+  .auth.entering-slide, .auth.entering-fade{ background:#0B0706; }
+  .au-bg{ position:absolute; inset:0; overflow:hidden; pointer-events:none;
+    background:
+      radial-gradient(120% 62% at 88% 6%, #4B2F22 0%, rgba(75,47,34,0) 58%),
+      radial-gradient(90% 55% at -6% 58%, #2D1B13 0%, rgba(45,27,19,0) 62%),
+      linear-gradient(180deg,#140C0A 0%,#0C0807 52%,#070504 100%); }
+  .au-bg i{ position:absolute; display:block; border-radius:50%; filter:blur(34px); will-change:transform; }
+  .au-bg .b1{ width:270px; height:230px; right:-90px; top:34px; background:#8A5A43; opacity:.55; animation:auDrift1 22s ease-in-out infinite alternate; }
+  .au-bg .b2{ width:150px; height:300px; left:-50px; top:46%; background:#6E4330; opacity:.5; border-radius:45%; transform:rotate(-14deg); animation:auDrift2 26s ease-in-out infinite alternate; }
+  .au-bg .b3{ width:120px; height:230px; left:26%; top:50%; background:#B07C5B; opacity:.28; border-radius:48%; transform:rotate(-24deg); animation:auDrift3 19s ease-in-out infinite alternate; }
+  .au-bg .b4{ width:170px; height:250px; right:8%; top:57%; background:#7A4C37; opacity:.4; border-radius:46%; transform:rotate(18deg); animation:auDrift1 24s ease-in-out infinite alternate-reverse; }
+  .au-bg::after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,.62) 100%); }
+  .au-grain{ position:absolute; inset:0; opacity:.11; mix-blend-mode:overlay; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E"); background-size:180px 180px; z-index:2; }
+  @keyframes auDrift1{ from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-26px,22px,0) scale(1.1); } }
+  @keyframes auDrift2{ from{ transform:translate3d(0,0,0) rotate(-14deg); } to{ transform:translate3d(30px,-24px,0) rotate(-6deg); } }
+  @keyframes auDrift3{ from{ transform:translate3d(0,0,0) rotate(-24deg); } to{ transform:translate3d(-22px,20px,0) rotate(-14deg); } }
+  .au-wrap{ position:relative; z-index:3; flex:1; display:flex; flex-direction:column; overflow-y:auto; padding:0 22px calc(26px + env(safe-area-inset-bottom)); }
+  .au-top{ display:flex; align-items:center; justify-content:space-between; padding:18px 0 6px; flex-shrink:0; }
+  .au-sp{ width:40px; }
+  .au-brand{ font-size:15px; font-weight:400; letter-spacing:.42em; padding-left:.42em; color:#F1EEE8; }
+  .au-x{ width:40px; height:40px; border:0; background:none; border-radius:50%; color:rgba(241,238,232,.82); display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .au-x:active{ background:rgba(255,255,255,.08); }
+  .au-x.spinning svg{ animation:spin 0.9s linear infinite; }
+  .au-x.has-update{ color:#E9A26B; }
+  .au-hero{ text-align:center; padding:12vh 8px 0; animation:auUp .7s cubic-bezier(.2,.8,.2,1) both; }
+  .au-hero h1{ margin:0; font-size:27px; font-weight:400; letter-spacing:-.6px; line-height:1.16; color:#F1EEE8; }
+  .au-hero p{ margin:10px auto 0; max-width:290px; font-size:20px; line-height:1.2; letter-spacing:-.3px; color:#8F8A83; }
+  .au-hero small{ display:block; margin-top:14px; font-size:11px; letter-spacing:.3px; color:rgba(241,238,232,.32); }
+  .au-actions{ margin-top:auto; padding-top:28px; display:flex; flex-direction:column; gap:10px; animation:auUp .7s .12s cubic-bezier(.2,.8,.2,1) both; }
+  .au-pill{ position:relative; display:flex; align-items:center; justify-content:center; height:56px; border-radius:999px; border:1px solid rgba(241,238,232,.42); background:rgba(8,6,5,.62);
+    color:#F1EEE8; font:400 16px var(--sans); padding:0 50px; cursor:text; -webkit-tap-highlight-color:transparent; transition:border-color .2s ease, background .2s ease, transform .15s ease; }
+  .au-pill:focus-within{ border-color:rgba(241,238,232,.9); background:rgba(8,6,5,.8); }
+  .au-pill .au-ico{ position:absolute; left:20px; top:50%; margin-top:-10.5px; color:#F1EEE8; opacity:.9; }
+  .au-pill input{ width:100%; min-width:0; border:0; outline:0; background:transparent; color:#F1EEE8; font:400 16px var(--sans); text-align:center; padding:0; }
+  .au-pill input::placeholder{ color:#8F8A83; }
+  .au-pill input:-webkit-autofill{ -webkit-text-fill-color:#F1EEE8; transition:background-color 9999s; }
+  .au-eye{ position:absolute; right:12px; top:50%; width:36px; height:36px; margin-top:-18px; border:0; background:none; color:rgba(241,238,232,.6); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .au-eye.on{ color:#F1EEE8; }
+  .au-primary{ background:#ECE9E3; border-color:#ECE9E3; color:#141210; cursor:pointer; font-weight:500; }
+  .au-primary .au-ico{ color:#141210; opacity:.85; }
+  .au-primary:active{ transform:scale(.985); background:#E0DDD6; }
+  .au-foot{ display:flex; align-items:center; justify-content:center; gap:18px; margin-top:4px; padding:4px 0; font-size:15px; color:#8F8A83; }
+  .au-foot a{ color:#F1EEE8; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+  .au-info{ width:26px; height:26px; border-radius:50%; border:1px solid rgba(241,238,232,.5); background:none; color:rgba(241,238,232,.8); font:italic 600 13px Georgia,serif; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  @keyframes auUp{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
+  @media (max-height:640px){ .au-hero{ padding-top:5vh; } .au-hero h1{ font-size:25px; } .au-hero p{ font-size:17px; } }
+  @media (prefers-reduced-motion: reduce){ .au-bg i, .au-hero, .au-actions{ animation:none !important; } }
+
   .update-btn{
     width:36px; height:36px; border-radius:50%; border:none; background:var(--white);
     display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
@@ -875,70 +926,52 @@
 <div id="splash" aria-hidden="true"><img src="icons/icon-192.png" alt=""><div class="splash-dots"><i></i><i></i><i></i></div></div>
 <div id="app">
 
-  <!-- ===================== AUTH: LOGIN ===================== -->
-  <section class="screen" id="screen-login">
-    <div class="top" style="justify-content:flex-end; padding-bottom:0;">
-      <button class="update-btn" id="update-check-btn" onclick="manualCheckUpdate()" title="Cek pembaruan">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" id="update-icon">
-          <path d="M3 12a9 9 0 0115.4-6.4M21 12a9 9 0 01-15.4 6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <path d="M17 3v5h-5M7 21v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-    <div class="content center-content">
-      <div style="text-align:center; margin-bottom:8px;">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" style="margin-bottom:14px;">
-          <defs>
-            <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#14B8A6"/>
-              <stop offset="1" stop-color="#0A6E64"/>
-            </linearGradient>
-          </defs>
-          <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="url(#logoGrad)"/>
-          <rect x="7" y="9" width="10" height="7.2" rx="1.8" fill="#FFFFFF"/>
-          <path d="M8.6 9V8a3.4 3.4 0 016.8 0v1" stroke="#FFFFFF" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          <circle cx="12" cy="12.6" r="1.3" fill="#0D9488"/>
-        </svg>
-        <h2 class="title" style="margin-bottom:0;">MoneyPri</h2>
-        <p class="sub">Masuk ke akunmu untuk lanjut mencatat</p>
-        <p class="sub" id="app-version-label" style="margin-top:-18px; font-size:11.5px; opacity:0.6;"></p>
+    <!-- ===================== AUTH: LOGIN ===================== -->
+  <section class="screen auth" id="screen-login">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <span class="au-sp"></span>
+        <div class="au-brand">MoneyPri</div>
+        <button class="au-x" id="update-check-btn" onclick="manualCheckUpdate()" title="Cek pembaruan" aria-label="Cek pembaruan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" id="update-icon">
+          <path d="M3 12a9 9 0 0115.4-6.4M21 12a9 9 0 01-15.4 6.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M17 3v5h-5M7 21v-5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg></button>
       </div>
-      <div class="field">
-        <label>Nama akun</label>
-        <input type="text" id="login-username" placeholder="cth. Andi" autocomplete="off">
+      <div class="au-hero">
+        <h1>Selamat datang kembali</h1>
+        <p>Masuk untuk lanjut mencatat keuanganmu</p>
+        <small id="app-version-label"></small>
       </div>
-      <div class="field">
-        <label>Kata sandi</label>
-        <input type="password" id="login-password" placeholder="••••••">
+      <div class="au-actions">
+        <label class="au-pill"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.4 7.2-5.4s6.3 1.8 7.2 5.4"/></svg><input type="text" id="login-username" placeholder="Nama akun" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="next"></label>
+        <label class="au-pill"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.6"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5"/></svg><input type="password" id="login-password" placeholder="Kata sandi" autocomplete="off" enterkeyhint="go" onkeydown="if(event.key==='Enter') handleLogin()"><button type="button" class="au-eye" onclick="toggleAuthPass('login-password', this)" aria-label="Tampilkan sandi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg></button></label>
+        <button class="au-pill au-primary" onclick="handleLogin()"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4.5h7.5a2 2 0 012 2v11a2 2 0 01-2 2H10M4.5 12h10M11 8l4 4-4 4"/></svg><span>Masuk →</span></button>
+        <div class="au-foot"><span>Belum punya akun? <a onclick="goTo('screen-register')">Daftar →</a></span><button class="au-info" onclick="showAuthInfo()" aria-label="Info">i</button></div>
       </div>
-      <button class="btn btn-primary" onclick="handleLogin()">Masuk</button>
-      <p class="link-row">Belum punya akun? <a onclick="goTo('screen-register')">Buat akun baru</a></p>
     </div>
   </section>
 
   <!-- ===================== AUTH: REGISTER ===================== -->
-  <section class="screen" id="screen-register">
-    <div class="top">
-      <button class="back-btn" onclick="goTo('screen-login')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <h1>Akun baru</h1>
-      <div style="width:38px"></div>
-    </div>
-    <div class="content center-content">
-      <h2 class="title">Buat akun</h2>
-      <p class="sub">Tiap akun punya data sendiri-sendiri, terpisah total dari akun lain.</p>
-      <div class="field">
-        <label>Nama akun</label>
-        <input type="text" id="reg-username" placeholder="cth. Andi" autocomplete="off">
+  <section class="screen auth" id="screen-register">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <span class="au-sp"></span>
+        <div class="au-brand">MoneyPri</div>
+        <button class="au-x" onclick="goTo('screen-login')" aria-label="Kembali ke masuk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
       </div>
-      <div class="field">
-        <label>Buat kata sandi</label>
-        <input type="password" id="reg-password" placeholder="min. 4 karakter">
+      <div class="au-hero">
+        <h1>Buat akun baru</h1>
+        <p>Tiap akun punya data sendiri, terpisah dari akun lain</p>
       </div>
-      <div class="field">
-        <label>Ulangi kata sandi</label>
-        <input type="password" id="reg-password2" placeholder="ulangi sandi">
+      <div class="au-actions">
+        <label class="au-pill"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.4 7.2-5.4s6.3 1.8 7.2 5.4"/></svg><input type="text" id="reg-username" placeholder="Nama akun" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="next"></label>
+        <label class="au-pill"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.6"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5"/></svg><input type="password" id="reg-password" placeholder="Kata sandi (min. 4)" autocomplete="off" enterkeyhint="next"><button type="button" class="au-eye" onclick="toggleAuthPass('reg-password', this)" aria-label="Tampilkan sandi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg></button></label>
+        <label class="au-pill"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.2" cy="14.8" r="3.6"/><path d="M10.9 12.2L19 4.2M15.8 7.4l2.4 2.4M13.6 9.6l1.6 1.6"/></svg><input type="password" id="reg-password2" placeholder="Ulangi kata sandi" autocomplete="off" enterkeyhint="go" onkeydown="if(event.key==='Enter') handleRegister()"></label>
+        <button class="au-pill au-primary" onclick="handleRegister()"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="8.5" r="3.4"/><path d="M3.8 19.6c.8-3.3 3.1-5 5.7-5s4.9 1.7 5.7 5M18 8v6M15 11h6"/></svg><span>Buat akun & lanjut →</span></button>
+        <div class="au-foot"><span>Sudah punya akun? <a onclick="goTo('screen-login')">Masuk →</a></span><button class="au-info" onclick="showAuthInfo()" aria-label="Info">i</button></div>
       </div>
-      <button class="btn btn-primary" onclick="handleRegister()">Buat akun & lanjut</button>
     </div>
   </section>
 
@@ -1346,7 +1379,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="app.js?b=20261006b"></script>
-<script src="content.js?b=20261006b"></script>
+<script src="app.js?b=20261006c"></script>
+<script src="content.js?b=20261006c"></script>
 </body>
 </html>
