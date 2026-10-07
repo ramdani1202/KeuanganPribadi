@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0D9488">
-<meta name="app-build" content="20261007a">
+<meta name="app-build" content="20261007b">
 <meta name="description" content="MoneyPri — pembukuan pribadi sederhana">
 <title>MoneyPri</title>
 <link rel="manifest" href="manifest.json">
@@ -893,9 +893,20 @@
   .au-foot{ display:flex; align-items:center; justify-content:center; gap:18px; margin-top:4px; padding:4px 0; font-size:15px; color:#8F8A83; }
   .au-foot a{ color:#F1EEE8; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
   .au-info{ width:26px; height:26px; border-radius:50%; border:1px solid rgba(241,238,232,.5); background:none; color:rgba(241,238,232,.8); font:italic 600 13px Georgia,serif; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  /* Langkah onboarding bertema gelap + kartu pilihan berbentuk pil */
+  .au-steps{ display:flex; gap:6px; padding:10px 0 0; flex-shrink:0; }
+  .au-steps span{ flex:1; height:3px; border-radius:2px; background:rgba(241,238,232,.16); }
+  .au-steps span.done{ background:#ECE9E3; }
+  .au-opt{ cursor:pointer; text-align:center; }
+  .au-opt > span:not(.au-check){ display:block; width:100%; text-align:center; }
+  .au-opt:active{ transform:scale(.985); }
+  .au-opt.selected{ border-color:rgba(241,238,232,.95); background:rgba(241,238,232,.12); }
+  .au-check{ position:absolute; right:15px; top:50%; width:22px; height:22px; margin-top:-11px; border-radius:50%; background:#ECE9E3; color:#141210;
+    display:flex; align-items:center; justify-content:center; opacity:0; transform:scale(.6); transition:opacity .18s ease, transform .18s ease; }
+  .au-opt.selected .au-check{ opacity:1; transform:none; }
   @keyframes auUp{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
   @media (max-height:640px){ .au-hero{ padding-top:5vh; } .au-hero h1{ font-size:25px; } .au-hero p{ font-size:17px; } }
-  @media (prefers-reduced-motion: reduce){ .au-bg i, .au-hero, .au-actions{ animation:none !important; } }
+  @media (prefers-reduced-motion: reduce){ .au-bg i, .au-hero, .au-actions{ animation:none !important; } .au-check, .au-opt{ transition:none !important; } }
 
   .update-btn{
     width:36px; height:36px; border-radius:50%; border:none; background:var(--white);
@@ -976,26 +987,25 @@
   </section>
 
   <!-- ===================== ONBOARDING: INCOME TYPE ===================== -->
-  <section class="screen" id="screen-ob-income">
-    <div class="progress-dots"><span class="done"></span><span></span><span></span><span></span><span></span></div>
-    <div class="content center-content">
-      <h2 class="title">Sumber penghasilanmu?</h2>
-      <p class="sub">Ini cuma buat catatan awal, bisa diubah kapan saja nanti.</p>
-      <div class="stack" style="margin-bottom:20px;">
-        <div class="source-opt" style="width:100%; flex-direction:row; justify-content:flex-start; padding:16px;" onclick="selectIncomeType('gaji', this)" id="opt-gaji">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 9h10M7 13h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <span class="sname" style="margin-left:10px;">Gaji bulanan / harian</span>
-        </div>
-        <div class="source-opt" style="width:100%; flex-direction:row; justify-content:flex-start; padding:16px;" onclick="selectIncomeType('usaha', this)" id="opt-usaha">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-          <span class="sname" style="margin-left:10px;">Usaha / jualan sendiri</span>
-        </div>
-        <div class="source-opt" style="width:100%; flex-direction:row; justify-content:flex-start; padding:16px;" onclick="selectIncomeType('keduanya', this)" id="opt-keduanya">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v10M8 10h8M8 14h8" stroke="currentColor" stroke-width="1.5"/></svg>
-          <span class="sname" style="margin-left:10px;">Keduanya</span>
-        </div>
+  <section class="screen auth" id="screen-ob-income">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <span class="au-sp"></span>
+        <div class="au-brand">MoneyPri</div>
+        <span class="au-sp"></span>
       </div>
-      <button class="btn btn-primary" onclick="goTo('screen-ob-banks')">Lanjut</button>
+      <div class="au-steps" aria-label="Langkah 1 dari 5"><span class="done"></span><span></span><span></span><span></span><span></span></div>
+      <div class="au-hero">
+        <h1>Sumber penghasilanmu?</h1>
+        <p>Ini cuma buat catatan awal, bisa diubah kapan saja nanti</p>
+      </div>
+      <div class="au-actions">
+        <button type="button" class="au-pill au-opt" id="opt-gaji" aria-pressed="false" onclick="selectIncomeType('gaji', this)"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4.5" width="16" height="15" rx="2.6"/><path d="M8 9.5h8M8 13.5h5"/></svg><span>Gaji bulanan / harian</span><span class="au-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
+        <button type="button" class="au-pill au-opt" id="opt-usaha" aria-pressed="false" onclick="selectIncomeType('usaha', this)"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16M6 20.5V10.5l6-5.5 6 5.5v10M10 20.5v-5h4v5"/></svg><span>Usaha / jualan sendiri</span><span class="au-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
+        <button type="button" class="au-pill au-opt" id="opt-keduanya" aria-pressed="false" onclick="selectIncomeType('keduanya', this)"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.8v8.4M8.4 10.4h7.2M8.4 13.6h7.2"/></svg><span>Keduanya</span><span class="au-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
+        <button class="au-pill au-primary" onclick="goTo('screen-ob-banks')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut →</span></button>
+      </div>
     </div>
   </section>
 
@@ -1379,7 +1389,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="app.js?b=20261007a"></script>
-<script src="content.js?b=20261007a"></script>
+<script src="app.js?b=20261007b"></script>
+<script src="content.js?b=20261007b"></script>
 </body>
 </html>

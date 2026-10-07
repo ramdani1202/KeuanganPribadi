@@ -214,7 +214,7 @@ function goTo(screenId){
   const next = document.getElementById(screenId);
   if(!next || current === next) return;
   const tc = document.querySelector('meta[name="theme-color"]');
-  if(tc) tc.setAttribute('content', (screenId === 'screen-login' || screenId === 'screen-register') ? '#0B0706' : '#0D9488');
+  if(tc) tc.setAttribute('content', ['screen-login','screen-register','screen-ob-income'].includes(screenId) ? '#0B0706' : '#0D9488');
 
   if(!current){
     next.classList.add('active');
@@ -435,8 +435,9 @@ function confirmReset(){
    ========================================================= */
 function selectIncomeType(type, el){
   obSelectedIncomeType = type;
-  document.querySelectorAll('#screen-ob-income .source-opt').forEach(o=>o.classList.remove('selected'));
+  document.querySelectorAll('#screen-ob-income .au-opt').forEach(o=>{ o.classList.remove('selected'); o.setAttribute('aria-pressed','false'); });
   el.classList.add('selected');
+  el.setAttribute('aria-pressed','true');
 }
 
 function walletRowHTML(item, i, removeFn){
