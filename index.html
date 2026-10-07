@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0D9488">
-<meta name="app-build" content="20261007b">
+<meta name="app-build" content="20261007c">
 <meta name="description" content="MoneyPri — pembukuan pribadi sederhana">
 <title>MoneyPri</title>
 <link rel="manifest" href="manifest.json">
@@ -904,6 +904,38 @@
   .au-check{ position:absolute; right:15px; top:50%; width:22px; height:22px; margin-top:-11px; border-radius:50%; background:#ECE9E3; color:#141210;
     display:flex; align-items:center; justify-content:center; opacity:0; transform:scale(.6); transition:opacity .18s ease, transform .18s ease; }
   .au-opt.selected .au-check{ opacity:1; transform:none; }
+  /* ---- Onboarding lanjutan (bank, e-wallet, saldo, tunai): tema gelap sama dengan login ---- */
+  .au-hero.compact{ padding-top:5vh; }
+  .au-body{ display:flex; flex-direction:column; gap:10px; margin-top:22px; animation:auUp .7s .06s cubic-bezier(.2,.8,.2,1) both; }
+  .au-list{ display:flex; flex-direction:column; gap:10px; }
+  .au-list .row-item{ background:rgba(8,6,5,.62); border:1px solid rgba(241,238,232,.28); box-shadow:none; border-radius:999px; padding:9px 10px 9px 12px; min-height:56px; color:#F1EEE8; }
+  .au-list .row-item .rname{ color:#F1EEE8; font-weight:400; font-size:16px; }
+  .au-list .row-item .rdel{ width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:50%; color:#FF8A80; padding:0; }
+  .au-list .row-item .rdel:active{ background:rgba(255,255,255,.08); }
+  .au-list .wlogo{ width:36px; height:36px; border-radius:11px; box-shadow:none; }
+  .au-list .wlogo-fallback{ width:36px; height:36px; border-radius:11px; background:rgba(241,238,232,.12); color:#F1EEE8; }
+  .au-field{ display:flex; flex-direction:column; gap:8px; }
+  .au-flabel{ display:flex; align-items:center; gap:9px; padding:0 8px; font-size:14px; color:#B9B4AC; }
+  .au-flabel .wlogo-sm{ width:24px; height:24px; border-radius:7px; }
+  .au-money{ cursor:text; }
+  .au-money .au-rp{ position:absolute; left:22px; top:50%; transform:translateY(-50%); font-size:15px; color:#8F8A83; }
+  .au-money input{ font-size:20px; font-weight:500; letter-spacing:-.2px; padding:0 4px; }
+  .au-empty{ margin:6px 0 0; text-align:center; font-size:15px; line-height:1.4; color:#8F8A83; }
+  .au-ghost{ cursor:pointer; background:transparent; }
+  .au-ghost:active{ transform:scale(.985); background:rgba(241,238,232,.08); }
+  .au-ghost .au-plus{ position:absolute; left:20px; top:50%; margin-top:-10.5px; }
+
+  /* Modal pilih bank / e-wallet saat onboarding ikut gelap */
+  #wallet-picker-modal.ob-dark{ background:rgba(0,0,0,.66); }
+  #wallet-picker-modal.ob-dark .modal-sheet.sheet-card{ background:#15100E; border:1px solid rgba(241,238,232,.14); box-shadow:0 16px 48px rgba(0,0,0,.6); }
+  #wallet-picker-modal.ob-dark .modal-handle{ background:rgba(241,238,232,.28); }
+  #wallet-picker-modal.ob-dark .modal-title{ color:#F1EEE8; font-weight:500; }
+  #wallet-picker-modal.ob-dark .modal-sub{ color:#8F8A83; }
+  #wallet-picker-modal.ob-dark .pay-tile{ background:rgba(241,238,232,.06); border:1px solid rgba(241,238,232,.2); color:#F1EEE8; }
+  #wallet-picker-modal.ob-dark .pay-tile .pname{ color:#F1EEE8; font-weight:500; }
+  #wallet-picker-modal.ob-dark .pay-tile:active{ background:rgba(241,238,232,.14); }
+  #wallet-picker-modal.ob-dark .btn-cancel{ background:transparent; color:#F1EEE8; border:1px solid rgba(241,238,232,.4); border-radius:999px; }
+  #wallet-picker-modal.ob-dark .btn-cancel:active{ background:rgba(241,238,232,.1); }
   @keyframes auUp{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
   @media (max-height:640px){ .au-hero{ padding-top:5vh; } .au-hero h1{ font-size:25px; } .au-hero p{ font-size:17px; } }
   @media (prefers-reduced-motion: reduce){ .au-bg i, .au-hero, .au-actions{ animation:none !important; } .au-check, .au-opt{ transition:none !important; } }
@@ -1004,80 +1036,115 @@
         <button type="button" class="au-pill au-opt" id="opt-gaji" aria-pressed="false" onclick="selectIncomeType('gaji', this)"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4.5" width="16" height="15" rx="2.6"/><path d="M8 9.5h8M8 13.5h5"/></svg><span>Gaji bulanan / harian</span><span class="au-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
         <button type="button" class="au-pill au-opt" id="opt-usaha" aria-pressed="false" onclick="selectIncomeType('usaha', this)"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16M6 20.5V10.5l6-5.5 6 5.5v10M10 20.5v-5h4v5"/></svg><span>Usaha / jualan sendiri</span><span class="au-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
         <button type="button" class="au-pill au-opt" id="opt-keduanya" aria-pressed="false" onclick="selectIncomeType('keduanya', this)"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.8v8.4M8.4 10.4h7.2M8.4 13.6h7.2"/></svg><span>Keduanya</span><span class="au-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
-        <button class="au-pill au-primary" onclick="goTo('screen-ob-banks')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut →</span></button>
+        <button class="au-pill au-primary" onclick="goTo('screen-ob-banks')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut</span></button>
       </div>
     </div>
   </section>
 
   <!-- ===================== ONBOARDING: BANKS ===================== -->
-  <section class="screen" id="screen-ob-banks">
-    <div class="progress-dots"><span class="done"></span><span class="done"></span><span></span><span></span><span></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-income')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div class="content">
-      <h2 class="title">Rekening bank</h2>
-      <p class="sub">Tambahkan nama bank yang kamu pakai. Lewati kalau tidak punya rekening.</p>
-      <div class="stack" id="ob-bank-list"></div>
-      <button class="btn btn-outline" style="width:100%;" onclick="openWalletPicker('ob-bank')">+ Tambah bank</button>
-    </div>
-    <div class="content" style="flex:0; padding-top:0;">
-      <button class="btn btn-primary" onclick="goTo('screen-ob-ewallet')">Lanjut</button>
+  <section class="screen auth" id="screen-ob-banks">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <button class="au-x" onclick="goTo('screen-ob-income')" aria-label="Kembali"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="au-brand">MoneyPri</div>
+        <span class="au-sp"></span>
+      </div>
+      <div class="au-steps" aria-label="Langkah 2 dari 5"><span class="done"></span><span class="done"></span><span></span><span></span><span></span></div>
+      <div class="au-hero compact">
+        <h1>Rekening bank</h1>
+        <p>Tambahkan nama bank yang kamu pakai. Lewati kalau tidak punya rekening</p>
+      </div>
+      <div class="au-body"><div class="au-list" id="ob-bank-list"></div></div>
+      <div class="au-actions">
+        <button class="au-pill au-ghost" onclick="openWalletPicker('ob-bank')"><svg class="au-plus" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Tambah bank</span></button>
+        <button class="au-pill au-primary" onclick="goTo('screen-ob-ewallet')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut</span></button>
+      </div>
     </div>
   </section>
 
   <!-- ===================== ONBOARDING: EWALLET ===================== -->
-  <section class="screen" id="screen-ob-ewallet">
-    <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span></span><span></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-banks')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div class="content">
-      <h2 class="title">E-wallet</h2>
-      <p class="sub">Tambahkan dompet digital yang kamu pakai. Lewati kalau tidak ada.</p>
-      <div class="stack" id="ob-ewallet-list"></div>
-      <button class="btn btn-outline" style="width:100%;" onclick="openWalletPicker('ob-ewallet')">+ Tambah e-wallet</button>
-    </div>
-    <div class="content" style="flex:0; padding-top:0;">
-      <button class="btn btn-primary" onclick="goTo('screen-ob-balance-bank')">Lanjut</button>
+  <section class="screen auth" id="screen-ob-ewallet">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <button class="au-x" onclick="goTo('screen-ob-banks')" aria-label="Kembali"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="au-brand">MoneyPri</div>
+        <span class="au-sp"></span>
+      </div>
+      <div class="au-steps" aria-label="Langkah 3 dari 5"><span class="done"></span><span class="done"></span><span class="done"></span><span></span><span></span></div>
+      <div class="au-hero compact">
+        <h1>E-wallet</h1>
+        <p>Tambahkan dompet digital yang kamu pakai. Lewati kalau tidak ada</p>
+      </div>
+      <div class="au-body"><div class="au-list" id="ob-ewallet-list"></div></div>
+      <div class="au-actions">
+        <button class="au-pill au-ghost" onclick="openWalletPicker('ob-ewallet')"><svg class="au-plus" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Tambah e-wallet</span></button>
+        <button class="au-pill au-primary" onclick="goTo('screen-ob-balance-bank')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut</span></button>
+      </div>
     </div>
   </section>
 
   <!-- ===================== ONBOARDING: BANK BALANCE ===================== -->
-  <section class="screen" id="screen-ob-balance-bank">
-    <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-ewallet')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div class="content">
-      <h2 class="title">Saldo awal bank</h2>
-      <p class="sub">Masukkan saldo saat ini di tiap rekening.</p>
-      <div class="stack" id="ob-balance-bank-list"></div>
-    </div>
-    <div class="content" style="flex:0; padding-top:0;">
-      <button class="btn btn-primary" onclick="goTo('screen-ob-balance-ewallet')">Lanjut</button>
+  <section class="screen auth" id="screen-ob-balance-bank">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <button class="au-x" onclick="goTo('screen-ob-ewallet')" aria-label="Kembali"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="au-brand">MoneyPri</div>
+        <span class="au-sp"></span>
+      </div>
+      <div class="au-steps" aria-label="Langkah 4 dari 5"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span></div>
+      <div class="au-hero compact">
+        <h1>Saldo awal bank</h1>
+        <p>Masukkan saldo saat ini di tiap rekening</p>
+      </div>
+      <div class="au-body" id="ob-balance-bank-list"></div>
+      <div class="au-actions">
+        <button class="au-pill au-primary" onclick="goTo('screen-ob-balance-ewallet')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut</span></button>
+      </div>
     </div>
   </section>
 
   <!-- ===================== ONBOARDING: EWALLET BALANCE ===================== -->
-  <section class="screen" id="screen-ob-balance-ewallet">
-    <div class="progress-dots"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div>
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-bank')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div class="content">
-      <h2 class="title">Saldo awal e-wallet</h2>
-      <p class="sub">Masukkan saldo saat ini di tiap dompet digital.</p>
-      <div class="stack" id="ob-balance-ewallet-list"></div>
-    </div>
-    <div class="content" style="flex:0; padding-top:0;">
-      <button class="btn btn-primary" onclick="goTo('screen-ob-cash')">Lanjut</button>
+  <section class="screen auth" id="screen-ob-balance-ewallet">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <button class="au-x" onclick="goTo('screen-ob-balance-bank')" aria-label="Kembali"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="au-brand">MoneyPri</div>
+        <span class="au-sp"></span>
+      </div>
+      <div class="au-steps" aria-label="Langkah 5 dari 5"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div>
+      <div class="au-hero compact">
+        <h1>Saldo awal e-wallet</h1>
+        <p>Masukkan saldo saat ini di tiap dompet digital</p>
+      </div>
+      <div class="au-body" id="ob-balance-ewallet-list"></div>
+      <div class="au-actions">
+        <button class="au-pill au-primary" onclick="goTo('screen-ob-cash')"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5L19 12l-5.5 5.5"/></svg><span>Lanjut</span></button>
+      </div>
     </div>
   </section>
 
   <!-- ===================== ONBOARDING: CASH ===================== -->
-  <section class="screen" id="screen-ob-cash">
-    <div style="padding:12px 20px 0;"><button class="back-btn" onclick="goTo('screen-ob-balance-ewallet')" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div class="content center-content">
-      <h2 class="title">Uang tunai di tangan</h2>
-      <p class="sub">Berapa uang cash yang kamu pegang sekarang?</p>
-      <div class="amount-input-wrap">
-        <span class="rp">Rp</span>
-        <input type="text" id="ob-cash-input" class="money-input" placeholder="0" inputmode="numeric" autocomplete="off">
+  <section class="screen auth" id="screen-ob-cash">
+    <div class="au-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i><span class="au-grain"></span></div>
+    <div class="au-wrap">
+      <div class="au-top">
+        <button class="au-x" onclick="goTo('screen-ob-balance-ewallet')" aria-label="Kembali"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="au-brand">MoneyPri</div>
+        <span class="au-sp"></span>
       </div>
-      <button class="btn btn-primary" onclick="finishOnboarding()">Selesai & buka beranda</button>
+      <div class="au-steps" aria-label="Langkah 5 dari 5"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div>
+      <div class="au-hero compact">
+        <h1>Uang tunai di tangan</h1>
+        <p>Berapa uang cash yang kamu pegang sekarang?</p>
+      </div>
+      <div class="au-actions">
+        <label class="au-pill au-money"><span class="au-rp">Rp</span><input type="text" id="ob-cash-input" class="money-input" placeholder="0" inputmode="numeric" autocomplete="off" enterkeyhint="done" onkeydown="if(event.key==='Enter') finishOnboarding()"></label>
+        <button class="au-pill au-primary" onclick="finishOnboarding()"><svg class="au-ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M8.4 12.4l2.5 2.5 4.8-5.2"/></svg><span>Selesai & buka beranda</span></button>
+      </div>
     </div>
   </section>
 
@@ -1389,7 +1456,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="app.js?b=20261007b"></script>
-<script src="content.js?b=20261007b"></script>
+<script src="app.js?b=20261007c"></script>
+<script src="content.js?b=20261007c"></script>
 </body>
 </html>

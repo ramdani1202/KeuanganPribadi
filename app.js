@@ -214,7 +214,7 @@ function goTo(screenId){
   const next = document.getElementById(screenId);
   if(!next || current === next) return;
   const tc = document.querySelector('meta[name="theme-color"]');
-  if(tc) tc.setAttribute('content', ['screen-login','screen-register','screen-ob-income'].includes(screenId) ? '#0B0706' : '#0D9488');
+  if(tc) tc.setAttribute('content', (['screen-login','screen-register'].includes(screenId) || screenId.indexOf('screen-ob-') === 0) ? '#0B0706' : '#0D9488');
 
   if(!current){
     next.classList.add('active');
@@ -246,6 +246,7 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 /* ---------- Modal open/close terpusat (biar transisi slide-up konsisten) ---------- */
 function openModal(id){
   const el = document.getElementById(id);
+  if(id === 'wallet-picker-modal') el.classList.toggle('ob-dark', !!document.querySelector('.screen.active[id^="screen-ob-"]'));
   el.style.display = 'flex';
   // paksa reflow dulu sebelum tambah class 'active', supaya transisi CSS kepicu (bukan langsung lompat ke state akhir)
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('active')));
@@ -532,18 +533,15 @@ function renderOBBalanceBank(){
   const wrap = document.getElementById('ob-balance-bank-list');
   wrap.innerHTML = '';
   if(currentData.banks.length === 0){
-    wrap.innerHTML = '<p class="sub">Kamu tidak menambahkan rekening bank.</p>';
+    wrap.innerHTML = '<p class="au-empty">Kamu tidak menambahkan rekening bank.</p>';
     return;
   }
   currentData.banks.forEach(b => {
     const field = document.createElement('div');
-    field.className = 'field';
+    field.className = 'au-field';
     const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo-sm" alt="">` : '';
-    field.innerHTML = `<label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(b.name)}</label>
-      <div class="amount-input-wrap" style="margin-bottom:0;">
-        <span class="rp">Rp</span>
-        <input type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-id="${b.id}" class="ob-bank-balance-input money-input" value="${moneyVal(currentData.balances.bank[b.id])}">
-      </div>`;
+    field.innerHTML = `<div class="au-flabel">${logoHTML}<span>${escapeHtml(b.name)}</span></div>
+      <label class="au-pill au-money"><span class="au-rp">Rp</span><input type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-id="${b.id}" class="ob-bank-balance-input money-input" value="${moneyVal(currentData.balances.bank[b.id])}"></label>`;
     wrap.appendChild(field);
   });
 }
@@ -551,18 +549,15 @@ function renderOBBalanceEwallet(){
   const wrap = document.getElementById('ob-balance-ewallet-list');
   wrap.innerHTML = '';
   if(currentData.ewallets.length === 0){
-    wrap.innerHTML = '<p class="sub">Kamu tidak menambahkan e-wallet.</p>';
+    wrap.innerHTML = '<p class="au-empty">Kamu tidak menambahkan e-wallet.</p>';
     return;
   }
   currentData.ewallets.forEach(b => {
     const field = document.createElement('div');
-    field.className = 'field';
+    field.className = 'au-field';
     const logoHTML = b.logo ? `<img src="${b.logo}" class="wlogo-sm" alt="">` : '';
-    field.innerHTML = `<label style="display:flex; align-items:center; gap:8px;">${logoHTML}${escapeHtml(b.name)}</label>
-      <div class="amount-input-wrap" style="margin-bottom:0;">
-        <span class="rp">Rp</span>
-        <input type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-id="${b.id}" class="ob-ewallet-balance-input money-input" value="${moneyVal(currentData.balances.ewallet[b.id])}">
-      </div>`;
+    field.innerHTML = `<div class="au-flabel">${logoHTML}<span>${escapeHtml(b.name)}</span></div>
+      <label class="au-pill au-money"><span class="au-rp">Rp</span><input type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-id="${b.id}" class="ob-ewallet-balance-input money-input" value="${moneyVal(currentData.balances.ewallet[b.id])}"></label>`;
     wrap.appendChild(field);
   });
 }
